@@ -1,0 +1,12 @@
+libraas/
+dataset_processado/
+uploads/
+venv/
+accuracy.png
+contexto.py
+dataset_nlp.py
+labels.npy
+loss.png
+modelo_gestos.keras
+scaler_mean.npy
+scaler_scale.npy
