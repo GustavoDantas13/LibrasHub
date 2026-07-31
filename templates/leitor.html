@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAMERA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .camera-container {
+            position: relative;
+        }
+        .camera-placeholder {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: #555;
+            background: #fff;
+            border-radius: 32px;
+            cursor: pointer;
+            z-index: 2;
+        }
+        .camera-active .camera-placeholder {
+            display: none;
+        }
+        .camera-active video {
+            display: block;
+        }
+        .camera-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 32px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar" aria-label="Sidebar principal">
+    <div>
+        <nav>
+            <ul>
+                <li>
+                    <a href="{{ url_for('home') }}">
+                        <!-- Home icon (preto) -->
+                        <img src="{{ url_for('static', filename='images/house.png') }}" alt="House">
+                        <span>Home</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{{ url_for('leitor') }}">
+                        <!-- Video / leitura icon (preto) -->
+                        <img src="{{ url_for('static', filename='images/videocam.png') }}" alt="Videocam">
+                        <span>Leitura e tradução</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{{ url_for('fotovideo') }}" id="btnUpload">
+                        <!-- Foto icon SVG preto, detalhes transparentes -->
+                         <img src="{{ url_for('static', filename='images/image (1).png') }}" alt="">
+                        <span>Traduzir foto/video</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <div>
+        <div class="sidebar-card" role="button" aria-label="Menu rápido" id="hamburgerMenu">
+            <div style="display:flex;flex-direction:column;justify-content:center">
+                <img src="{{ url_for('static', filename='images/information.png') }}" alt="Informações">
+               
+            </div>
+        </div>
+        <div class="sidebar-menu" id="sidebarMenu" style="display:none;">
+            <ul>
+                <li><a href="{{ url_for('ajuda') }}">Ajuda</a></li>
+            </ul>
+        </div>
+    </div>
+</aside>
+
+        <main class="content">
+    <div class="camera-container" id="cameraBox">
+        <div class="camera-placeholder">Clique para abrir a câmera</div>
+        <video id="cameraFeed" autoplay playsinline></video>
+        <canvas id="canvas" style="display: none;"></canvas>
+    </div>
+    <div class="text-display">
+        <div id="resultText"><br><br><br>A interpretação aparecerá aqui...</div>
+    </div>
+</main>
+    </div>
+
+        <button class="fab" title="Perfil" aria-label="Perfil">
+            <!-- User / perfil -->
+            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+            </svg>
+        </button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Alternância da câmera ao clicar
+            const cameraBox = document.getElementById('cameraBox');
+            const video = document.getElementById('cameraFeed');
+            let stream = null;
+            let isActive = false;
+
+            cameraBox.addEventListener('click', async function() {
+                if (!isActive) {
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                        video.srcObject = stream;
+                        cameraBox.classList.add('camera-active');
+                        isActive = true;
+                    } catch (error) {
+                        alert('Não foi possível acessar a câmera: ' + error.message);
+                    }
+                } else {
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                    video.srcObject = null;
+                    cameraBox.classList.remove('camera-active');
+                    isActive = false;
+                }
+            });
+
+            // Menu hamburguer toggle
+            var hamburger = document.getElementById('hamburgerMenu');
+            var menu = document.getElementById('sidebarMenu');
+            hamburger.addEventListener('click', function(e){
+                e.stopPropagation();
+                if(menu.style.display === 'none' || menu.style.display === ''){
+                    menu.style.display = 'block';
+                } else {
+                    menu.style.display = 'none';
+                }
+            });
+            document.addEventListener('click', function(e){
+                if(menu.style.display === 'block' && !menu.contains(e.target) && !hamburger.contains(e.target)){
+                    menu.style.display = 'none';
+                }
+            });
+        });
+
+        // Função para atualizar o texto do campo de resultado
+        window.setGestureText = function(text) {
+            document.getElementById('resultText').textContent = text;
+        };
+        // F1 shortcut to open help page from this page
+        window.addEventListener('keydown', function(e){
+            if(e.key === 'F1'){
+                e.preventDefault();
+                window.location.href = "{{ url_for('ajuda') }}";
+            }
+        });
+    </script>
+</body>
+</html>
