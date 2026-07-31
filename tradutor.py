@@ -445,156 +445,77 @@ def ajuda():
 @app.route("/analisar", methods=["POST"])
 def analisar():
 
-    arquivo = request.files.get("mediaFile")
+    arquivos = request.files.getlist("mediaFile")
 
-    if arquivo is None:
-
+    if not arquivos:
         return jsonify(
-
             success=False,
-
             error="Nenhum arquivo enviado."
-
         )
 
-    extensao = os.path.splitext(arquivo.filename)[1].lower()
+    resultados = []
 
-    nome = f"{uuid.uuid4()}{extensao}"
-    temp_path = os.path.join(UPLOAD_FOLDER, nome)
+    for arquivo in arquivos:
 
-    arquivo.save(temp_path)
+        extensao = os.path.splitext(arquivo.filename)[1].lower()
 
-    try:
-
-        # ====================================================
-        # IMAGEM
-        # ====================================================
-
-        if extensao in [".jpg", ".jpeg", ".png"]:
-
-            sequencia = processar_imagem(temp_path)
-
-            os.remove(temp_path)
-
-            if sequencia is None:
-
-                return jsonify(
-
-                    success=False,
-
-                    error="Não foi possível processar a imagem."
-
-                )
-
-            gesto, confianca = predizer(sequencia)
-
-            # confiança mínima
-            if confianca < 0.70:
-
-                return jsonify(
-
-                    success=True,
-
-                    text="Gesto não reconhecido.",
-
-                    confidence=round(confianca * 100, 2)
-
-                )
-
-            return jsonify(
-
-                success=True,
-
-                text=gesto,
-
-                confidence=round(confianca * 100, 2)
-
-            )
-
-        # ====================================================
-        # VÍDEO
-        # ====================================================
-
-        elif extensao in [
-
-            ".mp4",
-
-            ".avi",
-
-            ".mov",
-
-            ".mkv"
-
+        if extensao not in [
+            ".jpg", ".jpeg", ".png",
+            ".mp4", ".avi", ".mov", ".mkv"
         ]:
 
-            sequencia = processar_video(temp_path)
+            resultados.append({
+                "arquivo": arquivo.filename,
+                "erro": "Formato não suportado."
+            })
 
-            os.remove(temp_path)
+            continue
+
+        nome = f"{uuid.uuid4()}{extensao}"
+        caminho = os.path.join(UPLOAD_FOLDER, nome)
+
+        arquivo.save(caminho)
+
+        try:
+
+            if extensao in [".jpg", ".jpeg", ".png"]:
+                sequencia = processar_imagem(caminho)
+            else:
+                sequencia = processar_video(caminho)
 
             if sequencia is None:
 
-                return jsonify(
+                resultados.append({
+                    "arquivo": arquivo.filename,
+                    "erro": "Não foi possível processar."
+                })
 
-                    success=False,
-
-                    error="Não foi possível processar o vídeo."
-
-                )
+                continue
 
             gesto, confianca = predizer(sequencia)
 
-            if confianca < 0.70:
+            resultados.append({
+                "arquivo": arquivo.filename,
+                "gesto": gesto,
+                "confianca": round(confianca * 100, 2)
+            })
 
-                return jsonify(
+        except Exception as e:
 
-                    success=True,
+            resultados.append({
+                "arquivo": arquivo.filename,
+                "erro": str(e)
+            })
 
-                    text="Gesto não reconhecido.",
+        finally:
 
-                    confidence=round(confianca * 100, 2)
+            if os.path.exists(caminho):
+                os.remove(caminho)
 
-                )
-
-            return jsonify(
-
-                success=True,
-
-                text=gesto,
-
-                confidence=round(confianca * 100, 2)
-
-            )
-
-        # ====================================================
-        # FORMATO INVÁLIDO
-        # ====================================================
-
-        else:
-
-            os.remove(temp_path)
-
-            return jsonify(
-
-                success=False,
-
-                error="Formato não suportado."
-
-            )
-
-    except Exception as e:
-
-        if os.path.exists(temp_path):
-
-            os.remove(temp_path)
-
-        return jsonify(
-
-            success=False,
-
-            error=str(e)
-
-        )
-
+    return jsonify(
+        success=True,
+        resultados=resultados
+    )
 
 
 # ============================================================

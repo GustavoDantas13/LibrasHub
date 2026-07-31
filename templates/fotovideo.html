@@ -51,7 +51,7 @@
         <div class="upload-container">
             <form id="uploadForm" enctype="multipart/form-data">
                 <div class="upload-area" id="dropZone">
-                    <input type="file" id="fileInput" name="mediaFile" accept="image/*,video/*" style="display:none;">
+                    <input type="file" id="fileInput" name="mediaFile" accept="image/*,video/*" multiple style="display:none;">
                     <div class="upload-info">
                         <p>Arraste uma foto ou vídeo aqui ou</p>
                         <button type="button" onclick="fileInput.click()">Selecionar arquivo</button>
@@ -91,46 +91,100 @@ dropZone.addEventListener('drop', e => handleFiles(e.dataTransfer.files), false)
 fileInput.addEventListener('change', e => handleFiles(e.target.files));
 
 function handleFiles(files){
-    const file = files[0];
-    if(!file) return;
-    preview.style.display = 'block';
-    uploadInfo.style.display = 'none';
-    if(file.type.startsWith('image/')){
-        imagePreview.style.display = 'block';
-        videoPreview.style.display = 'none';
-        const reader = new FileReader();
-        reader.onload = e => imagePreview.src = e.target.result;
-        reader.readAsDataURL(file);
-    } else if(file.type.startsWith('video/')){
-        imagePreview.style.display = 'none';
-        videoPreview.style.display = 'block';
-        videoPreview.src = URL.createObjectURL(file);
-    }
-}
 
+    for(const file of files){
+
+        // evita duplicados
+        if(arquivosSelecionados.some(f =>
+            f.name === file.name &&
+            f.size === file.size &&
+            f.lastModified === file.lastModified
+        )){
+            continue;
+        }
+
+        arquivosSelecionados.push(file);
+
+        if(preview.style.display === "none"){
+            preview.style.display = "block";
+            uploadInfo.style.display = "none";
+        }
+
+        if(file.type.startsWith("image/")){
+
+            const img = document.createElement("img");
+
+            img.style.maxWidth = "250px";
+            img.style.margin = "10px";
+
+            const reader = new FileReader();
+
+            reader.onload = e => img.src = e.target.result;
+
+            reader.readAsDataURL(file);
+
+            preview.appendChild(img);
+
+        }else if(file.type.startsWith("video/")){
+
+            const video = document.createElement("video");
+
+            video.controls = true;
+
+            video.src = URL.createObjectURL(file);
+
+            video.style.maxWidth = "250px";
+            video.style.margin = "10px";
+
+            preview.appendChild(video);
+        }
+    }
+
+    // permite selecionar novamente
+    fileInput.value = "";
+}
 // Envio do arquivo via fetch
 document.getElementById('uploadForm').addEventListener('submit', async e => {
     e.preventDefault();
-    const file = fileInput.files[0];
-    if(!file){ alert("Selecione um arquivo primeiro"); return; }
+
+    const files = arquivosSelecionados;
+
+    if(files.length === 0){
+         alert("Selecione um arquivo primeiro"); 
+         return; 
+        }
 
     const formData = new FormData();
-    formData.append('mediaFile', file);
+
+    for(const file of files){
+        
+    formData.append("mediaFile", file);
+
+    }
 
     const res = await fetch('/analisar', { method:'POST', body:formData });
     const data = await res.json();
 
     const resultDiv = document.getElementById('resultText');
     if(data.success){
-        resultDiv.textContent = data.text;
+
+        const frase = data.resultados
+        .map(r => r.gesto)
+        .join(" ");
+
+    resultDiv.textContent = frase;
+    
     } else {
-        resultDiv.textContent = "⚠️ Erro: " + data.error;
+        resultDiv.textContent = "Erro: " + data.error;
     }
 });
 
 // limpar tradução
 
 const btnLimpar = document.getElementById("btnLimpar");
+
+arquivosSelecionados = [];
+preview.innerHTML = "";
 
 btnLimpar.addEventListener("click", () => {
 
