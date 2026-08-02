@@ -3,21 +3,21 @@ import os
 import numpy as np
 import mediapipe as mp
 
-# ============================================
+
 # CONFIGURAÇÕES
-# ============================================
+
 
 DATASET_DIR = "libraas"
 OUTPUT_DIR = "dataset_processado"
 
 SEQUENCE_LENGTH = 30
 
-# ---------- MÃOS ----------
+# Mãos 
 
 HAND_LANDMARKS = 63
 TOTAL_HANDS = 2
 
-# ---------- POSE ----------
+# Ombro 
 
 POSE_POINTS = 8
 POSE_VALUES = POSE_POINTS * 4
@@ -26,9 +26,9 @@ FEATURES = HAND_LANDMARKS * TOTAL_HANDS + POSE_VALUES
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# ============================================
-# MEDIAPIPE
-# ============================================
+
+# Mediapipe
+
 
 mp_hands = mp.solutions.hands
 mp_pose = mp.solutions.pose
@@ -50,43 +50,8 @@ pose = mp_pose.Pose(
 )
 
 
-# ============================================
-# NORMALIZAÇÃO DA MÃO
-# ============================================
 
-def normalizar_mao(mao):
-
-    wrist = mao.landmark[0]
-    middle = mao.landmark[9]
-
-    escala = np.sqrt(
-
-        (middle.x - wrist.x)**2 +
-
-        (middle.y - wrist.y)**2 +
-
-        (middle.z - wrist.z)**2
-
-    )
-
-    escala = max(escala, 1e-6)
-
-    pontos = []
-
-    for lm in mao.landmark:
-
-        pontos.extend([
-
-            (lm.x - wrist.x) / escala,
-
-            (lm.y - wrist.y) / escala,
-
-            (lm.z - wrist.z) / escala
-
-        ])
-
-    return pontos
-
+# Normalização da mão 
 
 def normalizar_mao(mao): 
     wrist = mao.landmark[0] 
@@ -110,9 +75,9 @@ def normalizar_mao(mao):
 
 
 
-# ============================================
-# EXTRAÇÃO DOS LANDMARKS
-# ============================================
+
+# Extração dos landmarks (se pá eu separo em um arquivo separado)
+
 
 def extrair_landmarks(frame):
 
@@ -123,9 +88,9 @@ def extrair_landmarks(frame):
 
     vetor = []
 
-    # =====================================
-    # MÃOS
-    # =====================================
+    
+    # Mãos
+    
 
     maos = []
 
@@ -175,9 +140,9 @@ def extrair_landmarks(frame):
 
         vetor.extend(pontos)
 
-    # =====================================
-    # POSE
-    # =====================================
+    
+    # Pose
+    
 
     indices = [
 
@@ -236,9 +201,9 @@ def extrair_landmarks(frame):
 
     return np.array(vetor, dtype=np.float32)
 
-# ============================================
-# SUAVIZAÇÃO TEMPORAL
-# ============================================
+
+# Suavização temporal
+
 
 def suavizar(sequencia):
 
@@ -261,9 +226,9 @@ def suavizar(sequencia):
 
     return nova
 
-# ============================================
-# INTERPOLAÇÃO TEMPORAL
-# ============================================
+
+# Interpolação (se pá eu separo em um arquivo separado)
+
 
 def interpolar(frames):
 
@@ -333,9 +298,9 @@ def interpolar(frames):
     return suavizar(novo)
 
 
-# ============================================
-# IMAGEM
-# ============================================
+
+# Imagem
+
 
 def processar_imagem(caminho):
 
@@ -355,9 +320,9 @@ def processar_imagem(caminho):
         axis=0
 
     )
-# ============================================
-# VÍDEO
-# ============================================
+
+# Vídeo
+
 
 def processar_video(caminho):
 
@@ -411,9 +376,9 @@ def processar_video(caminho):
     cap.release()
 
     return np.asarray(sequencia, dtype=np.float32)
-# ============================================
-# DATA AUGMENTATION
-# ============================================
+
+# Data argumentacion (mexe nas variações e aumenta a precisão)
+
 
 def augmentar(amostra):
 
@@ -447,9 +412,9 @@ def augmentar(amostra):
 
     return nova.astype(np.float32)
 
-# ============================================
-# PROCESSAMENTO
-# ============================================
+
+# ! Processamento
+
 
 total_amostras = 0
 
@@ -460,7 +425,7 @@ for gesto in sorted(os.listdir(DATASET_DIR)):
     if not os.path.isdir(pasta):
         continue
 
-    print(f"\n📂 {gesto}")
+    print(f"\n {gesto}")
 
     amostras = []
 
@@ -561,7 +526,7 @@ for gesto in sorted(os.listdir(DATASET_DIR)):
 
         print(
 
-            f"💾 {gesto}"
+            f"{gesto}"
 
         )
 
@@ -585,13 +550,13 @@ for gesto in sorted(os.listdir(DATASET_DIR)):
 
         print(
 
-            "⚠ Nenhuma amostra válida."
+            "Nenhuma amostra válida."
 
         )
 
-# ============================================
-# FINALIZAÇÃO
-# ============================================
+
+# Finlização (tem que por essa desgraça cosmica na interface)
+
 
 hands.close()
 pose.close()

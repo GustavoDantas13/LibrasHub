@@ -18,34 +18,50 @@
 <div class="container">
     <div class="container">
         <aside class="sidebar" aria-label="Sidebar principal">
-    <div>
-        <nav>
-            <ul>
-                <li>
-                    <a href="{{ url_for('fotovideo') }}" id="btnUpload">
-                        <!-- Foto icon SVG preto, detalhes transparentes -->
-                         <img src="{{ url_for('static', filename='images/image (1).png') }}" alt="">
-                        <span>Traduzir foto/video</span>
-                    </a>
-                </li>
-            </ul>
-        </nav>
-    </div>
+        <div>
+            <nav>
+                <ul>
+                    <li>
+                        <a href="{{ url_for('home') }}">
+                            <!-- Home icon (preto) -->
+                            <img src="{{ url_for('static', filename='images/house.png') }}" alt="House">
+                            <span>Home</span>
+                        </a>
+                    </li>
 
-    <div>
-        <div class="sidebar-card" role="button" aria-label="Menu rápido" id="hamburgerMenu">
-            <div style="display:flex;flex-direction:column;justify-content:center">
-                <img src="{{ url_for('static', filename='images/information.png') }}" alt="Informações">
-               
+                    <li>
+                        <a href="{{ url_for('leitor') }}">
+                            <!-- Video / leitura icon (preto) -->
+                            <img src="{{ url_for('static', filename='images/videocam.png') }}" alt="Videocam">
+                            <span>Leitura e tradução</span>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="{{ url_for('fotovideo') }}" id="btnUpload">
+                            <!-- Foto icon SVG preto, detalhes transparentes -->
+                            <img src="{{ url_for('static', filename='images/image (1).png') }}" alt="">
+                            <span>Traduzir foto/video</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+
+        <div>
+            <div class="sidebar-card" role="button" aria-label="Menu rápido" id="hamburgerMenu">
+                <div style="display:flex;flex-direction:column;justify-content:center">
+                    <img src="{{ url_for('static', filename='images/information.png') }}" alt="Informações">
+                
+                </div>
+            </div>
+            <div class="sidebar-menu" id="sidebarMenu" style="display:none;">
+                <ul>
+                    <li><a href="{{ url_for('ajuda') }}">Ajuda</a></li>
+                </ul>
             </div>
         </div>
-        <div class="sidebar-menu" id="sidebarMenu" style="display:none;">
-            <ul>
-                <li><a href="{{ url_for('ajuda') }}">Ajuda</a></li>
-            </ul>
-        </div>
-    </div>
-</aside>
+    </aside>
 
     <main class="content">
         <div class="upload-container">
@@ -173,7 +189,7 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
         .join(" ");
 
     resultDiv.textContent = frase;
-    
+
     } else {
         resultDiv.textContent = "Erro: " + data.error;
     }

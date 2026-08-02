@@ -42,9 +42,9 @@ from tensorflow.keras.callbacks import (
     ModelCheckpoint
 )
 
-# =======================================
-# CARREGAMENTO
-# =======================================
+
+# ! Carregamento dos datasets
+
 
 DATASET_DIR = "dataset_processado"
 
@@ -58,7 +58,7 @@ for arquivo in sorted(os.listdir(DATASET_DIR)):
 
     gesto = os.path.splitext(arquivo)[0]
 
-    print(f"📂 {gesto}")
+    print(f" {gesto}")
 
     dados = np.load(os.path.join(DATASET_DIR, arquivo))
 
@@ -79,9 +79,9 @@ FEATURES = X.shape[2]
 print(f"\nSequência: {TIMESTEPS}")
 print(f"Features: {FEATURES}")
 
-# ======================================
-# NORMALIZAÇÃO
-# ======================================
+
+# Normalização (se pá eu separo em um arquivo separado)
+
 
 scaler = StandardScaler()
 
@@ -94,12 +94,8 @@ X = X.reshape(-1, TIMESTEPS, FEATURES)
 np.save("scaler_mean.npy", scaler.mean_)
 np.save("scaler_scale.npy", scaler.scale_)
 
-# esperado:
-# (4200,30,63)
+# labels
 
-# =======================================
-# LABELS
-# =======================================
 
 encoder = LabelEncoder()
 
@@ -107,9 +103,9 @@ y = encoder.fit_transform(y)
 
 y = to_categorical(y)
 
-# =======================================
-# TREINO / TESTE
-# =======================================
+
+# Treino e Teste
+
 
 X_train, X_test, y_train, y_test = train_test_split(
 
@@ -135,9 +131,9 @@ pesos = compute_class_weight(
 
 class_weight = dict(enumerate(pesos))
 
-# =======================================
-# MODELO
-# =======================================
+
+# Modelo
+
 
 # Descobre automaticamente o formato do dataset
 TIMESTEPS = X.shape[1]
@@ -148,9 +144,9 @@ print(f"Features por frame: {FEATURES}")
 
 entrada = Input(shape=(TIMESTEPS, FEATURES))
 
-# ==========================
+
 # Bloco CNN 1
-# ==========================
+
 
 x = Conv1D(
     64,
@@ -170,9 +166,9 @@ x = Conv1D(
 
 x = MaxPooling1D(pool_size=2)(x)
 
-# ==========================
+
 # Bloco CNN 2
-# ==========================
+
 
 x = Conv1D(
     128,
@@ -185,9 +181,9 @@ x = BatchNormalization()(x)
 
 x = MaxPooling1D(pool_size=2)(x)
 
-# ==========================
+
 # BiLSTM
-# ==========================
+
 
 x = Bidirectional(
     LSTM(
@@ -198,9 +194,9 @@ x = Bidirectional(
 
 x = Dropout(0.30)(x)
 
-# ==========================
+
 # Self Attention
-# ==========================
+
 
 attention = MultiHeadAttention(
     num_heads=4,
@@ -211,9 +207,9 @@ x = Add()([x, attention])
 
 x = LayerNormalization()(x)
 
-# ==========================
+
 # Segunda BiLSTM
-# ==========================
+
 
 x = Bidirectional(
     LSTM(
@@ -222,15 +218,15 @@ x = Bidirectional(
     )
 )(x)
 
-# ==========================
+
 # Pooling
-# ==========================
+
 
 x = GlobalAveragePooling1D()(x)
 
-# ==========================
+
 # Classificador
-# ==========================
+
 
 x = Dense(
     128,
@@ -253,8 +249,9 @@ saida = Dense(
 
 model = Model(inputs=entrada, outputs=saida)
 
-# =======================================
-# COMPILAÇÃO
+
+# Compilação
+
 model.compile(
 
     optimizer="adam",
@@ -267,9 +264,9 @@ model.compile(
 
 model.summary()
 
-# =======================================
-# CALLBACKS
-# =======================================
+
+# Callbacks
+
 
 callbacks=[
 
@@ -303,11 +300,11 @@ callbacks=[
 
 ]
 
-# =======================================
-# TREINAMENTO
-# =======================================
 
-print("\n🚀 Treinando...\n")
+# ! Treinamento
+
+
+print("\n Treinando...\n")
 
 history = model.fit(
 
@@ -329,7 +326,7 @@ history = model.fit(
 
 )
 
-# =======================================
+
 
 loss,acc=model.evaluate(X_test,y_test)
 
@@ -375,7 +372,7 @@ print(
 
 )
 
-# =======================================
+
 
 np.save(
 
@@ -384,6 +381,8 @@ np.save(
     encoder.classes_
 
 )
+
+# * visão geral do resultado (tem que fazer essa desgraça aparecer na interface do front)
 
 print("\nModelo salvo.")
 print("Labels salvos.")

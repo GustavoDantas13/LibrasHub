@@ -5,30 +5,29 @@ import cv2
 import numpy as np
 import mediapipe as mp
 import uuid
+import time
 
 from tensorflow.keras.models import load_model
 
-# ============================================================
-# FLASK
-# ============================================================
+
+# Flask (mexe nesse aqui também não)
+
 
 app = Flask(__name__)
 
-# ============================================================
-# CONFIGURAÇÕES
-# ============================================================
+
+# ! Configurações
+
 
 SEQUENCE_LENGTH = 30
 
-# Mesmo número de features utilizado no treinamento
 FEATURES = 158
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ============================================================
-# CARREGA MODELO
-# ============================================================
+
+# ! Carrega modelo de tradução
 
 modelo = load_model("modelo_gestos.keras")
 
@@ -41,9 +40,25 @@ scaler_scale = np.load("scaler_scale.npy")
 # evita divisão por zero
 scaler_scale[scaler_scale == 0] = 1
 
-# ============================================================
-# MEDIAPIPE
-# ============================================================
+
+
+# Buffer
+
+buffer = []
+
+frase = []
+
+ultimo_gesto = ""
+
+gesto_confirmado = None
+contador_confirmacao = 0
+
+CONFIANCA_MINIMA = 0.95
+PREDICOES_CONSECUTIVAS = 5
+
+
+
+# Mediapipe
 
 mp_hands = mp.solutions.hands
 mp_pose = mp.solutions.pose
@@ -70,9 +85,8 @@ pose = mp_pose.Pose(
 
 )
 
-# ============================================================
-# INTERPOLAÇÃO
-# ============================================================
+# Interpolação (se pá eu separo em um arquivo separado) 
+# (obs: responsavel por dar a sequência de tempo para o sistema)
 
 def interpolar(frames):
 
@@ -112,9 +126,8 @@ def interpolar(frames):
 
     return np.array(novo, dtype=np.float32)
 
-# ============================================================
-# EXTRAÇÃO DE LANDMARKS
-# ============================================================
+
+# Extração de Landmarks (se pá eu separo em um arquivo separado)
 
 def extrair_landmarks(frame):
 
@@ -131,9 +144,8 @@ def extrair_landmarks(frame):
 
     vetor = []
 
-    # =====================================================
-    # MÃOS
-    # =====================================================
+    
+    # Pose (mãos)
 
     maos = []
 
@@ -185,9 +197,7 @@ def extrair_landmarks(frame):
 
         vetor.extend(pontos)
 
-    # =====================================================
-    # POSE
-    # =====================================================
+    # Pose (ombros)
 
     indices = [
 
@@ -246,9 +256,8 @@ def extrair_landmarks(frame):
 
     return np.array(vetor, dtype=np.float32)
 
-# ============================================================
-# NORMALIZAÇÃO
-# ============================================================
+
+# ? Normalização (se pá eu separo em um arquivo separado)
 
 def normalizar_mao(mao):
 
@@ -282,9 +291,7 @@ def normalizar(sequencia):
 
     return sequencia.astype(np.float32)
 
-# ============================================================
-# PROCESSA IMAGEM
-# ============================================================
+# ? Processa imagem (se pá eu separo em um arquivo separado)
 
 def processar_imagem(caminho):
 
@@ -318,9 +325,7 @@ def processar_imagem(caminho):
 
     )
 
-# ============================================================
-# PROCESSA VÍDEO
-# ============================================================
+# ? Processa vídeo (se pá eu separo em um arquivo separado)
 
 def processar_video(caminho):
 
@@ -392,9 +397,7 @@ def processar_video(caminho):
 
     
 
-# ============================================================
-# FUNÇÃO DE PREDIÇÃO
-# ============================================================
+# ? Função de previsão de gesto (se pá eu separo em um arquivo separado)
 
 def predizer(sequencia):
 
@@ -414,9 +417,7 @@ def predizer(sequencia):
 
     return labels[indice], float(pred[indice])
 
-# ============================================================
-# ROTAS
-# ============================================================
+# * Rotas (Uso do flask para carregar as paginas)
 
 @app.route("/")
 def home():
@@ -438,9 +439,7 @@ def ajuda():
     return render_template("ajuda.html")
 
 
-# ============================================================
-# ANALISAR
-# ============================================================
+# * Analizar
 
 @app.route("/analisar", methods=["POST"])
 def analisar():
@@ -518,9 +517,136 @@ def analisar():
     )
 
 
-# ============================================================
-# MAIN
-# ============================================================
+# * Tempo Real
+
+@app.route("/traducao_tempo_real", methods=["POST"])
+def traducao_tempo_real():
+
+    global buffer
+    global frase
+    global ultimo_gesto
+    global gesto_confirmado
+    global contador_confirmacao
+
+    inicio = time.time()
+
+    arquivo = request.files["frame"]
+
+    npimg = np.frombuffer(arquivo.read(), np.uint8)
+
+    frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+
+    landmarks = extrair_landmarks(frame)
+
+    if landmarks is None:
+        return jsonify({
+            "status": "aguardando",
+            "texto": " ".join(frase)
+        })
+
+    buffer.append(landmarks)
+
+    if len(buffer) > SEQUENCE_LENGTH:
+        buffer.pop(0)
+
+    if len(buffer) < SEQUENCE_LENGTH:
+        return jsonify({
+            "status": "aguardando",
+            "texto": " ".join(frase)
+        })
+
+    sequencia = np.array(buffer)
+
+    sequencia = normalizar(sequencia)
+
+    sequencia = sequencia.reshape(
+        1,
+        SEQUENCE_LENGTH,
+        FEATURES
+    )
+
+    gesto, confianca = predizer(sequencia)
+
+    print(f"{gesto} -> {confianca:.2%}")
+
+    # ! confiança baixa = descarta
+    if confianca < CONFIANCA_MINIMA:
+
+        gesto_confirmado = None
+        contador_confirmacao = 0
+
+        return jsonify({
+            "status": "aguardando",
+            "texto": " ".join(frase)
+        })
+
+    # mesma predição consecutiva
+    if gesto == gesto_confirmado:
+
+        contador_confirmacao += 1
+
+    else:
+        gesto_confirmado = gesto
+        contador_confirmacao = 1
+
+    if contador_confirmacao < PREDICOES_CONSECUTIVAS:
+        return jsonify({
+            "status": "analisando",
+            "texto": " ".join(frase),
+            "gesto": gesto,
+            "confirmacao": contador_confirmacao
+        })
+
+    print("Confirmação:", gesto_confirmado, contador_confirmacao)
+
+    # ! só aceita após 5 confirmações
+    if contador_confirmacao >= PREDICOES_CONSECUTIVAS:
+
+        if gesto != ultimo_gesto:
+
+            frase.append(gesto)
+
+            ultimo_gesto = gesto
+
+            print(">>> GESTO ACEITO:", gesto)
+
+        # ! limpa tudo para começar um novo gesto
+        buffer.clear()
+
+        gesto_confirmado = None
+        contador_confirmacao = 0
+        ultimo_gesto = None
+
+        print("Tempo:", round(time.time() - inicio, 2), "seg")
+
+    return jsonify(
+        status="traduzido",
+        texto=" ".join(frase)
+    )
+
+
+# * Limpar Tradução em Tempo Real
+
+@app.route("/limpar_traducao", methods=["POST"])
+def limpar_traducao():
+
+    global frase
+    global buffer
+    global ultimo_gesto
+    global gesto_confirmado
+    global contador_confirmacao
+
+    frase.clear()
+    buffer.clear()
+
+    ultimo_gesto = None
+    gesto_confirmado = None
+    contador_confirmacao = 0
+
+    return jsonify(ok=True)
+
+
+# ! Não mexe nisso, faz o flask funcionar
 
 if __name__ == "__main__":
 
