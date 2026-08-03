@@ -2,6 +2,7 @@ libraas/
 dataset_processado/
 uploads/
 venv/
+src/traducao/__pycache__/
 accuracy.png
 contexto.py
 dataset_nlp.py
