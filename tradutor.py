@@ -27,11 +27,6 @@ SEQUENCE_LENGTH = 30
 
 FEATURES = 158
 
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-
-
 # Buffer
 
 buffer = []
@@ -47,34 +42,12 @@ CONFIANCA_MINIMA = 0.95
 PREDICOES_CONSECUTIVAS = 5
 
 
-
-
-# * Rotas (Uso do flask para carregar as paginas)
-
-@app.route("/")
-def home():
-    return render_template("home.html")
-
-
-@app.route("/leitor")
-def leitor():
-    return render_template("leitor.html")
-
-
-@app.route("/fotovideo")
-def fotovideo():
-    return render_template("fotovideo.html")
-
-
-@app.route("/ajuda")
-def ajuda():
-    return render_template("ajuda.html")
-
-
 # * Analizar
 
 @app.route("/analisar", methods=["POST"])
 def analisar():
+
+    print(">>> Requisição recebida!")
 
     arquivos = request.files.getlist("mediaFile")
 
@@ -103,6 +76,14 @@ def analisar():
             continue
 
         nome = f"{uuid.uuid4()}{extensao}"
+
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+        UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+        # Faltava esta linha
         caminho = os.path.join(UPLOAD_FOLDER, nome)
 
         arquivo.save(caminho)
