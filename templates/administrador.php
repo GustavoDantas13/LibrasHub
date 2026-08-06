@@ -665,6 +665,7 @@
     </main>
 
 </div>
+
 <script>
 
 const dropZone = document.getElementById("dropZone");
@@ -726,17 +727,12 @@ const hamburgerMenu = document.getElementById("hamburgerMenu");
 const sidebarMenu = document.getElementById("sidebarMenu");
 
 
-/* Estado */
-
 let arquivosSelecionados = [];
 
 let treinamentoAtivo = false;
-let treinamentoCancelado = false;
 let treinamentoJobId = null;
-
 let pollingTreinamento = null;
 let consultaStatusEmAndamento = false;
-
 let proximoLogTreinamento = 0;
 
 const dadosGraficos = {
@@ -748,9 +744,10 @@ const dadosGraficos = {
 };
 
 
-/* Funções auxiliares */
+/* Funções gerais */
 
 function escaparHtml(valor) {
+
     return String(valor)
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
@@ -761,7 +758,13 @@ function escaparHtml(valor) {
 
 
 function formatarTamanho(bytes) {
-    const unidades = ["B", "KB", "MB", "GB"];
+
+    const unidades = [
+        "B",
+        "KB",
+        "MB",
+        "GB"
+    ];
 
     let tamanho = Number(bytes);
     let indice = 0;
@@ -774,118 +777,18 @@ function formatarTamanho(bytes) {
         indice++;
     }
 
-    const casas = indice === 0 ? 0 : 2;
-
-    return `${tamanho.toFixed(casas)} ${unidades[indice]}`;
-}
-
-
-async function lerJsonSeguro(resposta) {
-    const texto = await resposta.text();
-
-    let dados;
-
-    try {
-        dados = JSON.parse(texto);
-    } catch (erro) {
-        throw new Error(
-            "O servidor não retornou um JSON válido.\n\n" +
-            texto.substring(0, 1000)
-        );
-    }
-
-    if (!resposta.ok && dados.success !== false) {
-        dados.success = false;
-
-        dados.error =
-            dados.error ??
-            `Erro HTTP ${resposta.status}.`;
-    }
-
-    return dados;
-}
-
-
-function definirBotoesDataset(bloqueado) {
-    btnEnviarDataset.disabled = bloqueado;
-    btnLimpar.disabled = bloqueado;
-    btnSelecionarArquivos.disabled = bloqueado;
-    fileInput.disabled = bloqueado;
-}
-
-
-function adicionarLog(mensagem) {
-    if (
-        mensagem === undefined ||
-        mensagem === null ||
-        mensagem === ""
-    ) {
-        return;
-    }
-
-    const horario = new Date().toLocaleTimeString(
-        "pt-BR",
-        {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit"
-        }
+    return (
+        tamanho.toFixed(
+            indice === 0 ? 0 : 2
+        ) +
+        " " +
+        unidades[indice]
     );
-
-    const textoInicial =
-        "Aguardando o início do treinamento...";
-
-    const textoAtual =
-        trainingLog.value === textoInicial
-            ? ""
-            : trainingLog.value;
-
-    trainingLog.value =
-        `${textoAtual}${textoAtual ? "\n" : ""}` +
-        `[${horario}] ${String(mensagem)}`;
-
-    trainingLog.scrollTop = trainingLog.scrollHeight;
-}
-
-
-function definirProgressoTreinamento(
-    percentual,
-    mensagem
-) {
-    const valor = Math.max(
-        0,
-        Math.min(
-            100,
-            Number(percentual) || 0
-        )
-    );
-
-    trainingProgressFill.style.width = `${valor}%`;
-
-    trainingProgressBar.setAttribute(
-        "aria-valuenow",
-        String(valor)
-    );
-
-    trainingPercent.textContent =
-        `${valor.toFixed(0)}%`;
-
-    if (mensagem) {
-        trainingStatus.textContent = mensagem;
-    }
-}
-
-
-function obterProgressoAtual() {
-    return Number(
-        trainingProgressBar.getAttribute(
-            "aria-valuenow"
-        )
-    ) || 0;
 }
 
 
 function formatarPercentual(valor) {
+
     const numero = Number(valor);
 
     if (!Number.isFinite(numero)) {
@@ -907,6 +810,7 @@ function formatarPercentual(valor) {
 
 
 function formatarDecimal(valor) {
+
     const numero = Number(valor);
 
     if (!Number.isFinite(numero)) {
@@ -919,14 +823,52 @@ function formatarDecimal(valor) {
 }
 
 
-/* Menu lateral */
+async function lerJsonSeguro(resposta) {
+
+    const texto = await resposta.text();
+
+    let dados;
+
+    try {
+
+        dados = JSON.parse(texto);
+
+    } catch (erro) {
+
+        console.error(
+            "Resposta bruta:",
+            texto
+        );
+
+        throw new Error(
+            "O servidor não retornou um JSON válido. " +
+            texto.substring(0, 500)
+        );
+    }
+
+    if (!resposta.ok) {
+
+        dados.success = false;
+
+        dados.error =
+            dados.error ??
+            `Erro HTTP ${resposta.status}.`;
+    }
+
+    return dados;
+}
+
+
+/* Menu de ajuda */
 
 function alternarMenuLateral() {
+
     if (!sidebarMenu) {
         return;
     }
 
-    sidebarMenu.hidden = !sidebarMenu.hidden;
+    sidebarMenu.hidden =
+        !sidebarMenu.hidden;
 }
 
 
@@ -939,6 +881,7 @@ hamburgerMenu?.addEventListener(
 hamburgerMenu?.addEventListener(
     "keydown",
     (evento) => {
+
         if (
             evento.key === "Enter" ||
             evento.key === " "
@@ -953,6 +896,7 @@ hamburgerMenu?.addEventListener(
 document.addEventListener(
     "click",
     (evento) => {
+
         if (
             sidebarMenu &&
             hamburgerMenu &&
@@ -966,7 +910,16 @@ document.addEventListener(
 );
 
 
-/* Seleção de arquivos */
+/* Upload */
+
+function definirBotoesDataset(bloqueado) {
+
+    btnEnviarDataset.disabled = bloqueado;
+    btnLimpar.disabled = bloqueado;
+    btnSelecionarArquivos.disabled = bloqueado;
+    fileInput.disabled = bloqueado;
+}
+
 
 [
     "dragenter",
@@ -974,9 +927,11 @@ document.addEventListener(
     "dragleave",
     "drop"
 ].forEach((nomeEvento) => {
+
     dropZone.addEventListener(
         nomeEvento,
         (evento) => {
+
             evento.preventDefault();
             evento.stopPropagation();
         }
@@ -988,10 +943,14 @@ document.addEventListener(
     "dragenter",
     "dragover"
 ].forEach((nomeEvento) => {
+
     dropZone.addEventListener(
         nomeEvento,
         () => {
-            dropZone.classList.add("highlight");
+
+            dropZone.classList.add(
+                "highlight"
+            );
         }
     );
 });
@@ -1001,10 +960,14 @@ document.addEventListener(
     "dragleave",
     "drop"
 ].forEach((nomeEvento) => {
+
     dropZone.addEventListener(
         nomeEvento,
         () => {
-            dropZone.classList.remove("highlight");
+
+            dropZone.classList.remove(
+                "highlight"
+            );
         }
     );
 });
@@ -1013,6 +976,7 @@ document.addEventListener(
 dropZone.addEventListener(
     "drop",
     (evento) => {
+
         handleFiles(
             evento.dataTransfer.files
         );
@@ -1023,6 +987,7 @@ dropZone.addEventListener(
 fileInput.addEventListener(
     "change",
     (evento) => {
+
         handleFiles(
             evento.target.files
         );
@@ -1033,13 +998,16 @@ fileInput.addEventListener(
 btnSelecionarArquivos.addEventListener(
     "click",
     () => {
+
         fileInput.click();
     }
 );
 
 
 function handleFiles(files) {
+
     for (const file of files) {
+
         const duplicado =
             arquivosSelecionados.some(
                 (arquivoAtual) => (
@@ -1062,22 +1030,28 @@ function handleFiles(files) {
         linha.className = "arquivo";
 
         if (file.type.startsWith("image/")) {
+
             const imagem =
                 document.createElement("img");
 
             imagem.alt =
                 `Pré-visualização de ${file.name}`;
 
-            const reader = new FileReader();
+            const reader =
+                new FileReader();
 
             reader.onload = (evento) => {
-                imagem.src = evento.target.result;
+
+                imagem.src =
+                    evento.target.result;
             };
 
             reader.readAsDataURL(file);
 
             linha.appendChild(imagem);
+
         } else {
+
             const icone =
                 document.createElement("div");
 
@@ -1103,7 +1077,6 @@ function handleFiles(files) {
         `;
 
         linha.appendChild(info);
-
         listaArquivos.appendChild(linha);
     }
 
@@ -1114,10 +1087,12 @@ function handleFiles(files) {
 
 
 function atualizarResumoArquivos() {
+
     const quantidade =
         arquivosSelecionados.length;
 
     if (quantidade === 0) {
+
         preview.hidden = true;
         uploadInfo.hidden = false;
 
@@ -1141,14 +1116,14 @@ function atualizarResumoArquivos() {
 }
 
 
-/* Envio do dataset */
-
 uploadForm.addEventListener(
     "submit",
     async (evento) => {
+
         evento.preventDefault();
 
         if (arquivosSelecionados.length === 0) {
+
             alert("Selecione as mídias.");
             return;
         }
@@ -1159,6 +1134,7 @@ uploadForm.addEventListener(
             .trim();
 
         if (!nomeDataset) {
+
             alert("Informe o nome do dataset.");
             return;
         }
@@ -1169,11 +1145,13 @@ uploadForm.addEventListener(
             "Iniciando o envio dos arquivos...";
 
         try {
+
             for (
                 let indice = 0;
                 indice < arquivosSelecionados.length;
                 indice++
             ) {
+
                 const arquivo =
                     arquivosSelecionados[indice];
 
@@ -1210,12 +1188,23 @@ uploadForm.addEventListener(
                 );
 
                 const dados =
-                    await lerJsonSeguro(resposta);
+                    await lerJsonSeguro(
+                        resposta
+                    );
 
-                if (!dados.success) {
+                console.log(
+                    "Upload:",
+                    dados
+                );
+
+                if (
+                    !dados.success ||
+                    dados.rota !== "criar_dataset" ||
+                    dados.existe !== true
+                ) {
                     throw new Error(
                         dados.error ??
-                        `Erro ao enviar ${arquivo.name}.`
+                        "O servidor não confirmou o arquivo."
                     );
                 }
             }
@@ -1230,28 +1219,35 @@ uploadForm.addEventListener(
                 Processando o dataset...
             `;
 
-            const respostaFinal = await fetch(
-                "ajax/finalizar_dataset.php",
-                {
-                    method: "POST",
+            const respostaFinal =
+                await fetch(
+                    "ajax/finalizar_dataset.php",
+                    {
+                        method: "POST",
 
-                    headers: {
-                        "Content-Type":
-                            "application/x-www-form-urlencoded; charset=UTF-8"
-                    },
+                        headers: {
+                            "Content-Type":
+                                "application/x-www-form-urlencoded; charset=UTF-8"
+                        },
 
-                    body: new URLSearchParams({
-                        dataset: nomeDataset
-                    }).toString()
-                }
-            );
+                        body: new URLSearchParams({
+                            dataset: nomeDataset
+                        }).toString()
+                    }
+                );
 
             const dadosFinais =
                 await lerJsonSeguro(
                     respostaFinal
                 );
 
+            console.log(
+                "Finalização:",
+                dadosFinais
+            );
+
             if (!dadosFinais.success) {
+
                 throw new Error(
                     dadosFinais.error ??
                     "Erro ao processar o dataset."
@@ -1273,7 +1269,9 @@ uploadForm.addEventListener(
                 Datasets processados:
                 ${dadosFinais.datasets_processados ?? 0}
             `;
+
         } catch (erro) {
+
             resultadoDataset.innerHTML = `
                 <strong>
                     Erro durante a criação do dataset.
@@ -1283,18 +1281,19 @@ uploadForm.addEventListener(
 
                 ${escaparHtml(erro.message)}
             `;
+
         } finally {
+
             definirBotoesDataset(false);
         }
     }
 );
 
 
-/* Limpar dataset */
-
 btnLimpar.addEventListener(
     "click",
     () => {
+
         arquivosSelecionados = [];
 
         fileInput.value = "";
@@ -1312,9 +1311,100 @@ btnLimpar.addEventListener(
 );
 
 
-/* Gráficos */
+/* Treinamento */
+
+function adicionarLog(mensagem) {
+
+    if (
+        mensagem === undefined ||
+        mensagem === null ||
+        mensagem === ""
+    ) {
+        return;
+    }
+
+    if (
+        trainingLog.value.trim() ===
+        "Aguardando o início do treinamento..."
+    ) {
+        trainingLog.value = "";
+    }
+
+    const horario =
+        new Date().toLocaleTimeString(
+            "pt-BR",
+            {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit"
+            }
+        );
+
+    trainingLog.value +=
+        `${trainingLog.value ? "\n" : ""}` +
+        `[${horario}] ${String(mensagem)}`;
+
+    trainingLog.scrollTop =
+        trainingLog.scrollHeight;
+}
+
+
+function definirProgresso(
+    percentual,
+    mensagem
+) {
+
+    const valor = Math.max(
+        0,
+        Math.min(
+            100,
+            Number(percentual) || 0
+        )
+    );
+
+    trainingProgressFill.style.width =
+        `${valor}%`;
+
+    trainingProgressBar.setAttribute(
+        "aria-valuenow",
+        String(valor)
+    );
+
+    trainingPercent.textContent =
+        `${valor.toFixed(0)}%`;
+
+    if (mensagem) {
+
+        trainingStatus.textContent =
+            mensagem;
+    }
+}
+
+
+function limparDadosTreinamento() {
+
+    dadosGraficos.epochs = [];
+    dadosGraficos.accuracy = [];
+    dadosGraficos.valAccuracy = [];
+    dadosGraficos.loss = [];
+    dadosGraficos.valLoss = [];
+
+    metricEpoch.textContent = "0 / 0";
+    metricAccuracy.textContent = "0,00%";
+    metricValAccuracy.textContent = "0,00%";
+    metricLoss.textContent = "0,0000";
+
+    definirProgresso(
+        0,
+        "Aguardando início"
+    );
+
+    atualizarGraficos();
+}
+
 
 function prepararCanvas(canvas) {
+
     const proporcao =
         window.devicePixelRatio || 1;
 
@@ -1324,8 +1414,11 @@ function prepararCanvas(canvas) {
     const altura =
         canvas.clientHeight || 290;
 
-    canvas.width = largura * proporcao;
-    canvas.height = altura * proporcao;
+    canvas.width =
+        largura * proporcao;
+
+    canvas.height =
+        altura * proporcao;
 
     const contexto =
         canvas.getContext("2d");
@@ -1347,13 +1440,89 @@ function prepararCanvas(canvas) {
 }
 
 
+function desenharSerie(
+    contexto,
+    valores,
+    converterX,
+    converterY,
+    cor,
+    tracejada
+) {
+
+    const pontos = valores
+        .map((valor, indice) => ({
+            indice,
+            valor: Number(valor)
+        }))
+        .filter((item) =>
+            Number.isFinite(item.valor)
+        );
+
+    if (pontos.length === 0) {
+        return;
+    }
+
+    contexto.save();
+
+    contexto.strokeStyle = cor;
+    contexto.fillStyle = cor;
+    contexto.lineWidth = 2;
+
+    contexto.setLineDash(
+        tracejada
+            ? [6, 4]
+            : []
+    );
+
+    contexto.beginPath();
+
+    pontos.forEach(
+        (ponto, indice) => {
+
+            const x =
+                converterX(ponto.indice);
+
+            const y =
+                converterY(ponto.valor);
+
+            if (indice === 0) {
+                contexto.moveTo(x, y);
+            } else {
+                contexto.lineTo(x, y);
+            }
+        }
+    );
+
+    contexto.stroke();
+    contexto.setLineDash([]);
+
+    pontos.forEach((ponto) => {
+
+        contexto.beginPath();
+
+        contexto.arc(
+            converterX(ponto.indice),
+            converterY(ponto.valor),
+            3,
+            0,
+            Math.PI * 2
+        );
+
+        contexto.fill();
+    });
+
+    contexto.restore();
+}
+
+
 function desenharGrafico(
     canvas,
-    rotulos,
-    serieTreinamento,
-    serieValidacao,
-    opcoes = {}
+    epochs,
+    treino,
+    validacao,
+    percentual
 ) {
+
     const {
         contexto,
         largura,
@@ -1367,101 +1536,105 @@ function desenharGrafico(
         altura
     );
 
-    if (rotulos.length === 0) {
+    if (epochs.length === 0) {
         return;
     }
 
     const margem = {
         topo: 20,
         direita: 18,
-        baixo: 42,
-        esquerda: 50
+        baixo: 40,
+        esquerda: 52
     };
 
-    const areaLargura =
+    const larguraUtil =
         largura -
         margem.esquerda -
         margem.direita;
 
-    const areaAltura =
+    const alturaUtil =
         altura -
         margem.topo -
         margem.baixo;
 
-    const todosValores = [
-        ...serieTreinamento,
-        ...serieValidacao
+    const valores = [
+        ...treino,
+        ...validacao
     ]
         .map(Number)
         .filter(Number.isFinite);
 
-    let minimo = Number(opcoes.minimo);
-    let maximo = Number(opcoes.maximo);
+    let minimo =
+        percentual
+            ? 0
+            : Math.min(...valores);
+
+    let maximo =
+        percentual
+            ? 1
+            : Math.max(...valores);
 
     if (!Number.isFinite(minimo)) {
-        minimo = todosValores.length
-            ? Math.min(...todosValores)
-            : 0;
+        minimo = 0;
     }
 
     if (!Number.isFinite(maximo)) {
-        maximo = todosValores.length
-            ? Math.max(...todosValores)
-            : 1;
+        maximo = 1;
     }
 
-    if (maximo === minimo) {
+    if (minimo === maximo) {
         maximo = minimo + 1;
     }
 
     const converterX = (indice) => {
-        if (rotulos.length === 1) {
+
+        if (epochs.length === 1) {
+
             return (
                 margem.esquerda +
-                areaLargura / 2
+                larguraUtil / 2
             );
         }
 
         return (
             margem.esquerda +
-            (
-                indice /
-                (rotulos.length - 1)
-            ) *
-            areaLargura
+            indice /
+            (epochs.length - 1) *
+            larguraUtil
         );
     };
 
-    const converterY = (valor) => (
-        margem.topo +
-        (
-            1 -
+    const converterY = (valor) => {
+
+        return (
+            margem.topo +
             (
-                (valor - minimo) /
-                (maximo - minimo)
-            )
-        ) *
-        areaAltura
-    );
+                1 -
+                (
+                    (valor - minimo) /
+                    (maximo - minimo)
+                )
+            ) *
+            alturaUtil
+        );
+    };
 
-    contexto.strokeStyle = "#e4e4e4";
-    contexto.lineWidth = 1;
     contexto.font = "11px Arial";
-    contexto.fillStyle = "#777777";
-
-    const quantidadeLinhas = 5;
+    contexto.fillStyle = "#777";
+    contexto.strokeStyle = "#e3e3e3";
+    contexto.lineWidth = 1;
 
     for (
         let indice = 0;
-        indice <= quantidadeLinhas;
+        indice <= 5;
         indice++
     ) {
-        const proporcao =
-            indice / quantidadeLinhas;
+
+        const proporcao = indice / 5;
 
         const y =
             margem.topo +
-            proporcao * areaAltura;
+            proporcao * alturaUtil;
 
         contexto.beginPath();
 
@@ -1471,7 +1644,8 @@ function desenharGrafico(
         );
 
         contexto.lineTo(
-            margem.esquerda + areaLargura,
+            margem.esquerda +
+            larguraUtil,
             y
         );
 
@@ -1479,144 +1653,64 @@ function desenharGrafico(
 
         const valor =
             maximo -
-            proporcao * (maximo - minimo);
-
-        const texto =
-            opcoes.percentual
-                ? `${(valor * 100).toFixed(0)}%`
-                : valor.toFixed(3);
+            proporcao *
+            (maximo - minimo);
 
         contexto.fillText(
-            texto,
+            percentual
+                ? `${(valor * 100).toFixed(0)}%`
+                : valor.toFixed(3),
             4,
             y + 4
         );
     }
 
-    contexto.strokeStyle = "#bbbbbb";
-
-    contexto.beginPath();
-
-    contexto.moveTo(
-        margem.esquerda,
-        margem.topo + areaAltura
-    );
-
-    contexto.lineTo(
-        margem.esquerda + areaLargura,
-        margem.topo + areaAltura
-    );
-
-    contexto.stroke();
-
-    function desenharSerie(
-        valores,
-        cor,
-        tracejado = false
-    ) {
-        const pontos = valores
-            .map((valor, indice) => ({
-                valor: Number(valor),
-                indice
-            }))
-            .filter((item) =>
-                Number.isFinite(item.valor)
-            );
-
-        if (pontos.length === 0) {
-            return;
-        }
-
-        contexto.save();
-
-        contexto.strokeStyle = cor;
-        contexto.fillStyle = cor;
-        contexto.lineWidth = 2;
-
-        contexto.setLineDash(
-            tracejado ? [6, 4] : []
-        );
-
-        contexto.beginPath();
-
-        pontos.forEach(
-            (ponto, indice) => {
-                const x =
-                    converterX(ponto.indice);
-
-                const y =
-                    converterY(ponto.valor);
-
-                if (indice === 0) {
-                    contexto.moveTo(x, y);
-                } else {
-                    contexto.lineTo(x, y);
-                }
-            }
-        );
-
-        contexto.stroke();
-
-        contexto.setLineDash([]);
-
-        pontos.forEach((ponto) => {
-            const x =
-                converterX(ponto.indice);
-
-            const y =
-                converterY(ponto.valor);
-
-            contexto.beginPath();
-
-            contexto.arc(
-                x,
-                y,
-                3,
-                0,
-                Math.PI * 2
-            );
-
-            contexto.fill();
-        });
-
-        contexto.restore();
-    }
-
     desenharSerie(
-        serieTreinamento,
-        "#252525"
+        contexto,
+        treino,
+        converterX,
+        converterY,
+        "#252525",
+        false
     );
 
     desenharSerie(
-        serieValidacao,
+        contexto,
+        validacao,
+        converterX,
+        converterY,
         "#999999",
         true
     );
 
-    const quantidadeRotulos =
-        Math.min(rotulos.length, 8);
-
-    contexto.fillStyle = "#777777";
+    contexto.fillStyle = "#777";
     contexto.textAlign = "center";
+
+    const quantidadeRotulos =
+        Math.min(
+            epochs.length,
+            8
+        );
 
     for (
         let indice = 0;
         indice < quantidadeRotulos;
         indice++
     ) {
+
         const posicao =
             quantidadeRotulos === 1
                 ? 0
                 : Math.round(
                     indice *
-                    (rotulos.length - 1) /
+                    (epochs.length - 1) /
                     (quantidadeRotulos - 1)
                 );
 
         contexto.fillText(
-            String(rotulos[posicao]),
+            String(epochs[posicao]),
             converterX(posicao),
-            altura - 14
+            altura - 12
         );
     }
 
@@ -1625,6 +1719,7 @@ function desenharGrafico(
 
 
 function atualizarGraficos() {
+
     const possuiDados =
         dadosGraficos.epochs.length > 0;
 
@@ -1639,91 +1734,125 @@ function atualizarGraficos() {
         dadosGraficos.epochs,
         dadosGraficos.accuracy,
         dadosGraficos.valAccuracy,
-        {
-            minimo: 0,
-            maximo: 1,
-            percentual: true
-        }
+        true
     );
 
     desenharGrafico(
         lossCanvas,
         dadosGraficos.epochs,
         dadosGraficos.loss,
-        dadosGraficos.valLoss
+        dadosGraficos.valLoss,
+        false
     );
 }
 
 
-function limparDadosTreinamento() {
-    dadosGraficos.epochs = [];
-    dadosGraficos.accuracy = [];
-    dadosGraficos.valAccuracy = [];
-    dadosGraficos.loss = [];
-    dadosGraficos.valLoss = [];
+function atualizarDadosEpoca(dados) {
 
-    metricEpoch.textContent = "0 / 0";
-    metricAccuracy.textContent = "0,00%";
-    metricValAccuracy.textContent = "0,00%";
-    metricLoss.textContent = "0,0000";
+    const epoca =
+        Number(dados.epoch);
 
-    definirProgressoTreinamento(
-        0,
-        "Aguardando início"
-    );
+    if (
+        !Number.isInteger(epoca) ||
+        epoca <= 0
+    ) {
+        return;
+    }
+
+    const indice =
+        dadosGraficos.epochs.indexOf(
+            epoca
+        );
+
+    const accuracy =
+        Number(dados.accuracy);
+
+    const valAccuracy =
+        Number(dados.val_accuracy);
+
+    const loss =
+        Number(dados.loss);
+
+    const valLoss =
+        Number(dados.val_loss);
+
+    if (indice === -1) {
+
+        dadosGraficos.epochs.push(epoca);
+        dadosGraficos.accuracy.push(accuracy);
+        dadosGraficos.valAccuracy.push(valAccuracy);
+        dadosGraficos.loss.push(loss);
+        dadosGraficos.valLoss.push(valLoss);
+
+    } else {
+
+        dadosGraficos.accuracy[indice] =
+            accuracy;
+
+        dadosGraficos.valAccuracy[indice] =
+            valAccuracy;
+
+        dadosGraficos.loss[indice] =
+            loss;
+
+        dadosGraficos.valLoss[indice] =
+            valLoss;
+    }
 
     atualizarGraficos();
 }
 
 
-/* Status do treinamento */
+function processarLogs(logs) {
 
-function adicionarLogsRecebidos(logs) {
     if (!Array.isArray(logs)) {
         return;
     }
 
     for (const item of logs) {
+
         if (
             typeof item === "object" &&
             item !== null
         ) {
+
             adicionarLog(
                 item.mensagem ??
                 item.message ??
                 JSON.stringify(item)
             );
+
         } else {
-            adicionarLog(String(item));
+
+            adicionarLog(
+                String(item)
+            );
         }
     }
 }
 
 
 function aplicarStatusTreinamento(dados) {
-    const epocaAtual =
+
+    const epoca =
         Number(dados.epoch ?? 0);
 
-    const totalEpocas =
+    const total =
         Number(dados.total_epochs ?? 0);
 
-    const progressoInformado =
+    let progresso =
         Number(dados.progress);
 
-    const percentual =
-        Number.isFinite(progressoInformado)
-            ? progressoInformado
-            : (
-                totalEpocas > 0
-                    ? (
-                        epocaAtual /
-                        totalEpocas
-                    ) * 100
-                    : 0
-            );
+    if (!Number.isFinite(progresso)) {
+
+        progresso =
+            total > 0
+                ? epoca / total * 100
+                : 0;
+    }
 
     metricEpoch.textContent =
-        `${epocaAtual} / ${totalEpocas}`;
+        `${epoca} / ${total}`;
 
     metricAccuracy.textContent =
         formatarPercentual(
@@ -1740,183 +1869,69 @@ function aplicarStatusTreinamento(dados) {
             dados.loss
         );
 
-    definirProgressoTreinamento(
-        percentual,
+    definirProgresso(
+        progresso,
         dados.message ??
         dados.status ??
         "Treinamento em andamento"
     );
 
-    if (epocaAtual > 0) {
-        const indiceExistente =
-            dadosGraficos.epochs.indexOf(
-                epocaAtual
-            );
+    atualizarDadosEpoca(dados);
 
-        const accuracy =
-            Number(dados.accuracy);
-
-        const valAccuracy =
-            Number(dados.val_accuracy);
-
-        const loss =
-            Number(dados.loss);
-
-        const valLoss =
-            Number(dados.val_loss);
-
-        if (indiceExistente === -1) {
-            dadosGraficos.epochs.push(
-                epocaAtual
-            );
-
-            dadosGraficos.accuracy.push(
-                accuracy
-            );
-
-            dadosGraficos.valAccuracy.push(
-                valAccuracy
-            );
-
-            dadosGraficos.loss.push(
-                loss
-            );
-
-            dadosGraficos.valLoss.push(
-                valLoss
-            );
-        } else {
-            dadosGraficos.accuracy[
-                indiceExistente
-            ] = accuracy;
-
-            dadosGraficos.valAccuracy[
-                indiceExistente
-            ] = valAccuracy;
-
-            dadosGraficos.loss[
-                indiceExistente
-            ] = loss;
-
-            dadosGraficos.valLoss[
-                indiceExistente
-            ] = valLoss;
-        }
-
-        atualizarGraficos();
-    }
-
-    adicionarLogsRecebidos(
+    processarLogs(
         dados.logs
     );
 
     if (dados.log) {
-        adicionarLog(dados.log);
+
+        adicionarLog(
+            dados.log
+        );
     }
 
+    const proximoLog =
+        Number(dados.proximo_log);
+
     if (
-        Number.isInteger(
-            Number(dados.proximo_log)
-        )
+        Number.isInteger(proximoLog) &&
+        proximoLog >= 0
     ) {
+
         proximoLogTreinamento =
-            Number(dados.proximo_log);
+            proximoLog;
     }
 }
 
 
-/* Iniciar treinamento */
+function pararMonitoramentoTreinamento() {
 
-btnTreinarModelo.addEventListener(
-    "click",
-    async () => {
-        if (treinamentoAtivo) {
-            return;
-        }
+    if (pollingTreinamento !== null) {
 
-        treinamentoAtivo = true;
-        treinamentoCancelado = false;
-        treinamentoJobId = null;
-        proximoLogTreinamento = 0;
-
-        btnTreinarModelo.disabled = true;
-        btnCancelarTreino.disabled = false;
-
-        limparDadosTreinamento();
-
-        trainingLog.value = "";
-
-        adicionarLog(
-            "Solicitando o início do treinamento..."
+        clearInterval(
+            pollingTreinamento
         );
 
-        definirProgressoTreinamento(
-            0,
-            "Iniciando treinamento"
-        );
-
-        try {
-            const resposta = await fetch(
-                "ajax/treinar_modelo.php",
-                {
-                    method: "POST"
-                }
-            );
-
-            const dados =
-                await lerJsonSeguro(resposta);
-
-            if (!dados.success) {
-                throw new Error(
-                    dados.error ??
-                    "Não foi possível iniciar o treinamento."
-                );
-            }
-
-            treinamentoJobId =
-                dados.job_id ?? null;
-
-            adicionarLog(
-                dados.message ??
-                "Treinamento iniciado."
-            );
-
-            iniciarMonitoramentoTreinamento();
-        } catch (erro) {
-            adicionarLog(
-                `Erro: ${erro.message}`
-            );
-
-            definirProgressoTreinamento(
-                0,
-                "Falha ao iniciar"
-            );
-
-            finalizarInterfaceTreinamento();
-        }
+        pollingTreinamento = null;
     }
-);
+}
 
 
-/* Monitoramento */
+function finalizarInterfaceTreinamento() {
 
-function iniciarMonitoramentoTreinamento() {
+    treinamentoAtivo = false;
+    consultaStatusEmAndamento = false;
+
     pararMonitoramentoTreinamento();
 
-    consultarStatusTreinamento();
-
-    pollingTreinamento =
-        window.setInterval(
-            consultarStatusTreinamento,
-            1500
-        );
+    btnTreinarModelo.disabled = false;
+    btnCancelarTreino.disabled = true;
 }
 
 
 async function consultarStatusTreinamento() {
+
     if (
         !treinamentoAtivo ||
-        treinamentoCancelado ||
         consultaStatusEmAndamento
     ) {
         return;
@@ -1925,6 +1940,7 @@ async function consultarStatusTreinamento() {
     consultaStatusEmAndamento = true;
 
     try {
+
         const parametros =
             new URLSearchParams();
 
@@ -1934,6 +1950,7 @@ async function consultarStatusTreinamento() {
         );
 
         if (treinamentoJobId) {
+
             parametros.set(
                 "job_id",
                 treinamentoJobId
@@ -1950,35 +1967,46 @@ async function consultarStatusTreinamento() {
         );
 
         const dados =
-            await lerJsonSeguro(resposta);
+            await lerJsonSeguro(
+                resposta
+            );
+
+        console.log(
+            "Status do treinamento:",
+            dados
+        );
 
         if (!dados.success) {
+
             throw new Error(
                 dados.error ??
                 "Erro ao consultar o treinamento."
             );
         }
 
-        aplicarStatusTreinamento(dados);
+        aplicarStatusTreinamento(
+            dados
+        );
 
         if (
             dados.status === "erro" ||
             dados.failed === true
         ) {
+
             adicionarLog(
-                `Erro: ${
+                "Erro: " +
+                (
                     dados.error ??
-                    "O treinamento foi encerrado com erro."
-                }`
+                    "O treinamento falhou."
+                )
             );
 
-            definirProgressoTreinamento(
-                obterProgressoAtual(),
+            definirProgresso(
+                dados.progress ?? 0,
                 "Erro no treinamento"
             );
 
             finalizarInterfaceTreinamento();
-
             return;
         }
 
@@ -1986,18 +2014,18 @@ async function consultarStatusTreinamento() {
             dados.status === "cancelado" ||
             dados.cancelled === true
         ) {
-            definirProgressoTreinamento(
-                obterProgressoAtual(),
-                "Treinamento cancelado"
-            );
 
             adicionarLog(
                 dados.message ??
                 "Treinamento cancelado."
             );
 
-            finalizarInterfaceTreinamento();
+            definirProgresso(
+                dados.progress ?? 0,
+                "Treinamento cancelado"
+            );
 
+            finalizarInterfaceTreinamento();
             return;
         }
 
@@ -2009,7 +2037,8 @@ async function consultarStatusTreinamento() {
                 dados.cancelled !== true
             )
         ) {
-            definirProgressoTreinamento(
+
+            definirProgresso(
                 100,
                 "Treinamento concluído"
             );
@@ -2019,38 +2048,179 @@ async function consultarStatusTreinamento() {
                 "Modelo treinado com sucesso."
             );
 
+            if (dados.resultado) {
+
+                adicionarLog(
+                    "Acurácia final: " +
+                    formatarPercentual(
+                        dados.resultado
+                            .accuracy_final
+                    )
+                );
+
+                adicionarLog(
+                    "Épocas executadas: " +
+                    (
+                        dados.resultado
+                            .epochs_executadas ??
+                        dados.epoch ??
+                        0
+                    )
+                );
+            }
+
             finalizarInterfaceTreinamento();
         }
+
     } catch (erro) {
+
+        console.error(
+            "Erro de monitoramento:",
+            erro
+        );
+
         adicionarLog(
             `Erro de monitoramento: ${erro.message}`
         );
 
-        definirProgressoTreinamento(
-            obterProgressoAtual(),
+        definirProgresso(
+            trainingProgressBar.getAttribute(
+                "aria-valuenow"
+            ),
             "Erro de comunicação"
         );
 
         finalizarInterfaceTreinamento();
+
     } finally {
+
         consultaStatusEmAndamento = false;
     }
 }
 
 
-/* Cancelamento */
+function iniciarMonitoramentoTreinamento() {
+
+    pararMonitoramentoTreinamento();
+
+    consultarStatusTreinamento();
+
+    pollingTreinamento =
+        setInterval(
+            consultarStatusTreinamento,
+            1500
+        );
+}
+
+
+btnTreinarModelo.addEventListener(
+    "click",
+    async () => {
+
+        console.log(
+            "Botão de treinamento acionado"
+        );
+
+        if (treinamentoAtivo) {
+            return;
+        }
+
+        treinamentoAtivo = true;
+        treinamentoJobId = null;
+        proximoLogTreinamento = 0;
+
+        btnTreinarModelo.disabled = true;
+        btnCancelarTreino.disabled = false;
+
+        limparDadosTreinamento();
+
+        trainingLog.value = "";
+
+        adicionarLog(
+            "Solicitando início do treinamento..."
+        );
+
+        definirProgresso(
+            0,
+            "Iniciando treinamento"
+        );
+
+        try {
+
+            const resposta = await fetch(
+                "ajax/treinar_modelo.php",
+                {
+                    method: "POST"
+                }
+            );
+
+            const dados =
+                await lerJsonSeguro(
+                    resposta
+                );
+
+            console.log(
+                "Início do treinamento:",
+                dados
+            );
+
+            if (!dados.success) {
+
+                throw new Error(
+                    dados.error ??
+                    "Não foi possível iniciar o treinamento."
+                );
+            }
+
+            treinamentoJobId =
+                dados.job_id ?? null;
+
+            adicionarLog(
+                dados.message ??
+                "Treinamento iniciado."
+            );
+
+            definirProgresso(
+                0,
+                dados.message ??
+                "Preparando treinamento"
+            );
+
+            iniciarMonitoramentoTreinamento();
+
+        } catch (erro) {
+
+            console.error(
+                "Erro ao iniciar treinamento:",
+                erro
+            );
+
+            adicionarLog(
+                `Erro: ${erro.message}`
+            );
+
+            definirProgresso(
+                0,
+                "Falha ao iniciar"
+            );
+
+            finalizarInterfaceTreinamento();
+        }
+    }
+);
+
 
 btnCancelarTreino.addEventListener(
     "click",
     async () => {
+
         if (!treinamentoAtivo) {
             return;
         }
 
-        const confirmou =
-            window.confirm(
-                "Deseja cancelar o treinamento atual?"
-            );
+        const confirmou = confirm(
+            "Deseja cancelar o treinamento atual?"
+        );
 
         if (!confirmou) {
             return;
@@ -2059,14 +2229,16 @@ btnCancelarTreino.addEventListener(
         btnCancelarTreino.disabled = true;
 
         adicionarLog(
-            "Solicitando o cancelamento..."
+            "Solicitando cancelamento..."
         );
 
         try {
+
             const corpo =
                 new URLSearchParams();
 
             if (treinamentoJobId) {
+
                 corpo.set(
                     "job_id",
                     treinamentoJobId
@@ -2088,172 +2260,65 @@ btnCancelarTreino.addEventListener(
             );
 
             const dados =
-                await lerJsonSeguro(resposta);
+                await lerJsonSeguro(
+                    resposta
+                );
 
             if (!dados.success) {
+
                 throw new Error(
                     dados.error ??
                     "Não foi possível cancelar."
                 );
             }
 
-            treinamentoCancelado = true;
-
             adicionarLog(
                 dados.message ??
                 "Cancelamento solicitado."
             );
 
-            definirProgressoTreinamento(
-                obterProgressoAtual(),
+            definirProgresso(
+                trainingProgressBar.getAttribute(
+                    "aria-valuenow"
+                ),
                 "Cancelamento solicitado"
             );
 
-            pararMonitoramentoTreinamento();
-
-            /*
-             * Consulta final para obter a confirmação
-             * depois que o Python encerrar a época.
-             */
-            aguardarConfirmacaoCancelamento();
         } catch (erro) {
-            btnCancelarTreino.disabled = false;
 
             adicionarLog(
                 `Erro ao cancelar: ${erro.message}`
             );
+
+            btnCancelarTreino.disabled = false;
         }
     }
 );
 
 
-async function aguardarConfirmacaoCancelamento() {
-    let tentativas = 0;
-    const maximoTentativas = 120;
-
-    const consultar = async () => {
-        tentativas++;
-
-        try {
-            const parametros =
-                new URLSearchParams();
-
-            parametros.set(
-                "desde_log",
-                String(proximoLogTreinamento)
-            );
-
-            if (treinamentoJobId) {
-                parametros.set(
-                    "job_id",
-                    treinamentoJobId
-                );
-            }
-
-            const resposta = await fetch(
-                "ajax/status_treinamento.php?" +
-                parametros.toString(),
-                {
-                    method: "GET",
-                    cache: "no-store"
-                }
-            );
-
-            const dados =
-                await lerJsonSeguro(resposta);
-
-            aplicarStatusTreinamento(dados);
-
-            if (
-                dados.status === "cancelado" ||
-                dados.cancelled === true ||
-                dados.finished === true
-            ) {
-                definirProgressoTreinamento(
-                    obterProgressoAtual(),
-                    "Treinamento cancelado"
-                );
-
-                finalizarInterfaceTreinamento();
-
-                return;
-            }
-        } catch (erro) {
-            adicionarLog(
-                `Erro ao confirmar cancelamento: ${erro.message}`
-            );
-
-            finalizarInterfaceTreinamento();
-
-            return;
-        }
-
-        if (tentativas >= maximoTentativas) {
-            adicionarLog(
-                "O cancelamento foi solicitado, mas a confirmação demorou."
-            );
-
-            finalizarInterfaceTreinamento();
-
-            return;
-        }
-
-        window.setTimeout(
-            consultar,
-            1500
-        );
-    };
-
-    consultar();
-}
-
-
-function pararMonitoramentoTreinamento() {
-    if (pollingTreinamento !== null) {
-        window.clearInterval(
-            pollingTreinamento
-        );
-
-        pollingTreinamento = null;
-    }
-}
-
-
-function finalizarInterfaceTreinamento() {
-    treinamentoAtivo = false;
-    treinamentoCancelado = false;
-    consultaStatusEmAndamento = false;
-
-    pararMonitoramentoTreinamento();
-
-    btnTreinarModelo.disabled = false;
-    btnCancelarTreino.disabled = true;
-}
-
-
-/* Limpar relatório */
-
 btnLimparLog.addEventListener(
     "click",
     () => {
+
         trainingLog.value = "";
     }
 );
 
 
-/* Redimensionar gráficos */
+/* Inicialização */
 
 let temporizadorResize = null;
 
 window.addEventListener(
     "resize",
     () => {
-        window.clearTimeout(
+
+        clearTimeout(
             temporizadorResize
         );
 
         temporizadorResize =
-            window.setTimeout(
+            setTimeout(
                 atualizarGraficos,
                 150
             );
@@ -2261,11 +2326,13 @@ window.addEventListener(
 );
 
 
-/* Inicialização */
-
 atualizarResumoArquivos();
 limparDadosTreinamento();
-    
+
+console.log(
+    "Script da administração carregado."
+);
+
 </script>
 
 </body>

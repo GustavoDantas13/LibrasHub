@@ -4,135 +4,93 @@ header("Content-Type: application/json; charset=utf-8");
 
 ini_set("display_errors", "0");
 ini_set("log_errors", "1");
+
 error_reporting(E_ALL);
 
-set_time_limit(300);
+set_time_limit(0);
 
-if (!isset($_FILES["mediaFile"])) {
-    echo json_encode([
-        "success" => false,
-        "error" => "Nenhum arquivo recebido."
-    ], JSON_UNESCAPED_UNICODE);
+
+function responder(
+    array $dados,
+    int $codigo = 200
+): void {
+
+    http_response_code($codigo);
+
+    echo json_encode(
+        $dados,
+        JSON_UNESCAPED_UNICODE |
+        JSON_UNESCAPED_SLASHES
+    );
 
     exit;
 }
+
 
 if (
     !isset($_POST["dataset"]) ||
     trim($_POST["dataset"]) === ""
 ) {
-    echo json_encode([
-        "success" => false,
-        "error" => "Nome do dataset não informado."
-    ], JSON_UNESCAPED_UNICODE);
 
-    exit;
+    responder([
+        "success" => false,
+        "error" => "Dataset não informado."
+    ], 400);
 }
 
-if (
-    $_FILES["mediaFile"]["error"]
-    !== UPLOAD_ERR_OK
-) {
-    echo json_encode([
-        "success" => false,
-        "error" => "Erro no upload do arquivo.",
-        "codigo_upload" =>
-            $_FILES["mediaFile"]["error"]
-    ], JSON_UNESCAPED_UNICODE);
-
-    exit;
-}
-
-$dataset = trim($_POST["dataset"]);
-
-$tempDir = __DIR__ . DIRECTORY_SEPARATOR . "temp";
-
-if (
-    !is_dir($tempDir) &&
-    !mkdir($tempDir, 0777, true)
-) {
-    echo json_encode([
-        "success" => false,
-        "error" =>
-            "Não foi possível criar a pasta temporária."
-    ], JSON_UNESCAPED_UNICODE);
-
-    exit;
-}
-
-$tmp = $_FILES["mediaFile"]["tmp_name"];
-
-$nomeOriginal = basename(
-    $_FILES["mediaFile"]["name"]
-);
-
-$nomeTemporario =
-    uniqid("dataset_", true)
-    . "_"
-    . $nomeOriginal;
-
-$destino =
-    $tempDir
-    . DIRECTORY_SEPARATOR
-    . $nomeTemporario;
-
-if (!move_uploaded_file($tmp, $destino)) {
-    echo json_encode([
-        "success" => false,
-        "error" =>
-            "Erro ao salvar o arquivo temporário."
-    ], JSON_UNESCAPED_UNICODE);
-
-    exit;
-}
 
 if (!function_exists("curl_init")) {
-    @unlink($destino);
 
-    echo json_encode([
+    responder([
         "success" => false,
-        "error" =>
-            "A extensão cURL não está habilitada."
-    ], JSON_UNESCAPED_UNICODE);
-
-    exit;
+        "error" => "A extensão cURL do PHP não está habilitada."
+    ], 500);
 }
 
-$tipoMime =
-    mime_content_type($destino)
-    ?: "application/octet-stream";
 
-$postFields = [
-    "dataset" => $dataset,
+$dataset = trim(
+    $_POST["dataset"]
+);
 
-    "mediaFile" => new CURLFile(
-        $destino,
-        $tipoMime,
-        $nomeOriginal
-    )
-];
 
 $curl = curl_init();
+
 
 curl_setopt_array($curl, [
 
     CURLOPT_URL =>
-        "http://127.0.0.1:5000/criar_dataset",
+        "http://127.0.0.1:5000/finalizar_dataset",
 
     CURLOPT_POST => true,
 
     CURLOPT_RETURNTRANSFER => true,
 
-    CURLOPT_POSTFIELDS => $postFields,
+    CURLOPT_POSTFIELDS => [
+        "dataset" => $dataset
+    ],
 
-    CURLOPT_TIMEOUT => 300,
+    CURLOPT_CONNECTTIMEOUT => 30,
 
-    CURLOPT_CONNECTTIMEOUT => 30
+    /*
+     * O processamento dos vídeos pode demorar.
+     */
+    CURLOPT_TIMEOUT => 0,
+
+    CURLOPT_HTTPHEADER => [
+        "Accept: application/json"
+    ]
 ]);
 
-$resposta = curl_exec($curl);
 
-$erroCurl = curl_error($curl);
+$resposta = curl_exec(
+    $curl
+);
+
+
+$erroCurl = curl_error(
+    $curl
+);
+
 
 $codigoHttp = curl_getinfo(
     $curl,
@@ -140,48 +98,52 @@ $codigoHttp = curl_getinfo(
 );
 
 
-@unlink($destino);
-
 if ($resposta === false) {
-    echo json_encode([
+
+    responder([
         "success" => false,
-        "error" => "Erro ao comunicar com o Flask.",
+        "error" => "Falha ao comunicar com o Flask.",
         "detalhes" => $erroCurl
-    ], JSON_UNESCAPED_UNICODE);
-
-    exit;
+    ], 502);
 }
 
-$json = json_decode($resposta, true);
 
-if (!is_array($json)) {
-    echo json_encode([
-        "success" => false,
-        "error" => "Resposta inválida do Flask.",
-        "http_code" => $codigoHttp,
-        "resposta_flask" => $resposta,
-        "json_error" => json_last_error_msg()
-    ], JSON_UNESCAPED_UNICODE);
-
-    exit;
-}
-
-if ($codigoHttp < 200 || $codigoHttp >= 300) {
-    echo json_encode([
-        "success" => false,
-        "error" =>
-            $json["error"]
-            ?? "O Flask retornou um erro.",
-        "http_code" => $codigoHttp
-    ], JSON_UNESCAPED_UNICODE);
-
-    exit;
-}
-
-echo json_encode(
-    $json,
-    JSON_UNESCAPED_UNICODE |
-    JSON_UNESCAPED_SLASHES
+$json = json_decode(
+    $resposta,
+    true
 );
 
-?>
+
+if (!is_array($json)) {
+
+    responder([
+        "success" => false,
+        "error" => "O Flask retornou uma resposta inválida.",
+        "http_code_flask" => $codigoHttp,
+        "resposta_flask" => $resposta,
+        "erro_json" => json_last_error_msg()
+    ], 502);
+}
+
+
+if (
+    $codigoHttp < 200 ||
+    $codigoHttp >= 300
+) {
+
+    $json["success"] = false;
+
+    $json["http_code_flask"] =
+        $codigoHttp;
+
+    responder(
+        $json,
+        $codigoHttp
+    );
+}
+
+
+responder(
+    $json,
+    200
+);

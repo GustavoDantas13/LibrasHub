@@ -1,25 +1,139 @@
+import os
 import numpy as np
+
 from tensorflow.keras.models import load_model
 
-modelo = load_model("modelo_gestos.keras")
 
-labels = np.load("labels.npy")
+BASE_DIR = os.path.dirname(
+    os.path.dirname(
+        os.path.dirname(
+            os.path.abspath(__file__)
+        )
+    )
+)
+
+MODELO_PATH = os.path.join(
+    BASE_DIR,
+    "modelo_gestos.keras"
+)
+
+LABELS_PATH = os.path.join(
+    BASE_DIR,
+    "labels.npy"
+)
+
+
+modelo = None
+labels = None
+
+
+def modelo_disponivel():
+
+    return (
+        os.path.isfile(MODELO_PATH)
+        and
+        os.path.isfile(LABELS_PATH)
+    )
+
+
+def carregar_modelo():
+
+    global modelo
+    global labels
+
+    if (
+        modelo is not None
+        and
+        labels is not None
+    ):
+        return
+
+    if not os.path.isfile(MODELO_PATH):
+        raise RuntimeError(
+            "O arquivo modelo_gestos.keras não foi encontrado. "
+            "Treine o modelo antes de realizar traduções."
+        )
+
+    if not os.path.isfile(LABELS_PATH):
+        raise RuntimeError(
+            "O arquivo labels.npy não foi encontrado. "
+            "Treine o modelo antes de realizar traduções."
+        )
+
+    modelo = load_model(
+        MODELO_PATH
+    )
+
+    labels = np.load(
+        LABELS_PATH,
+        allow_pickle=True
+    )
+
+
+def recarregar_modelo():
+
+    global modelo
+    global labels
+
+    modelo = None
+    labels = None
+
+    carregar_modelo()
+
+
+def descarregar_modelo():
+
+    global modelo
+    global labels
+
+    modelo = None
+    labels = None
 
 
 def prever(sequencia):
 
-    print(sequencia.shape)
-    pred = modelo.predict(sequencia, verbose=0)[0]
+    carregar_modelo()
 
-    top = np.argsort(pred)[::-1][:10]
+    print(sequencia.shape)
+
+    pred = modelo.predict(
+        sequencia,
+        verbose=0
+    )[0]
+
+    top = np.argsort(
+        pred
+    )[::-1][:10]
 
     print("\n========================")
 
-    for i in top:
-        print(f"{labels[i]:15s} -> {pred[i]*100:.2f}%")
+    for indice in top:
+
+        nome_gesto = str(
+            labels[indice]
+        )
+
+        confianca = float(
+            pred[indice]
+        )
+
+        print(
+            f"{nome_gesto:15s} -> "
+            f"{confianca * 100:.2f}%"
+        )
 
     print("========================\n")
 
-    indice = top[0]
+    indice_principal = int(
+        top[0]
+    )
 
-    return labels[indice], float(pred[indice])
+    gesto = str(
+        labels[indice_principal]
+    )
+
+    confianca = float(
+        pred[indice_principal]
+    )
+
+    return gesto, confianca

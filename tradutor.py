@@ -22,15 +22,23 @@ from src.traducao.processar_video import (
     processar_video_traducao
 )
 
-from src.traducao.prever import prever
+from src.traducao.prever import (
+    prever,
+    modelo_disponivel
+)
 
 from src.traducao.extrair_landmarks import (
     extrair_landmarks_traducao
 )
 
-from src.traducao.normalizar import normalizar
+from src.traducao.normalizar import (
+    normalizar,
+    scaler_disponivel
+)
 
-from src.traducao.dataset import criar_dataset
+from src.traducao.dataset import (
+    criar_dataset
+)
 
 from src.traducao.treinamento_cnn import (
     cancelar_treinamento,
@@ -39,29 +47,45 @@ from src.traducao.treinamento_cnn import (
 )
 
 
-
-# FLASK
-
+# Flask
 
 app = Flask(__name__)
 
 
-
-# CONFIGURAÇÕES
-
+# Caminhos
 
 BASE_DIR = os.path.dirname(
     os.path.abspath(__file__)
 )
 
+LIBRAAS_DIR = os.path.join(
+    BASE_DIR,
+    "libraas"
+)
+
+DATASET_PROCESSADO_DIR = os.path.join(
+    BASE_DIR,
+    "dataset_processado"
+)
+
+UPLOAD_DIR = os.path.join(
+    BASE_DIR,
+    "uploads"
+)
+
+
+# Configurações
+
 SEQUENCE_LENGTH = 30
 
 FEATURES = 158
 
+CONFIANCA_MINIMA = 0.95
+
+PREDICOES_CONSECUTIVAS = 5
 
 
-# ESTADO DA TRADUÇÃO EM TEMPO REAL
-
+# Estado da tradução em tempo real
 
 buffer = []
 
@@ -73,14 +97,49 @@ gesto_confirmado = None
 
 contador_confirmacao = 0
 
-CONFIANCA_MINIMA = 0.95
 
-PREDICOES_CONSECUTIVAS = 5
+def recursos_traducao_disponiveis():
+
+    return (
+        modelo_disponivel()
+        and
+        scaler_disponivel()
+    )
 
 
+def erro_recursos_traducao():
 
-# UPLOAD DO DATASET
+    arquivos_ausentes = []
 
+    if not modelo_disponivel():
+
+        arquivos_ausentes.extend([
+            "modelo_gestos.keras",
+            "labels.npy"
+        ])
+
+    if not scaler_disponivel():
+
+        arquivos_ausentes.extend([
+            "scaler_mean.npy",
+            "scaler_scale.npy"
+        ])
+
+    arquivos_ausentes = list(
+        dict.fromkeys(
+            arquivos_ausentes
+        )
+    )
+
+    return (
+        "O modelo ainda não está disponível. "
+        "Realize o treinamento antes da tradução. "
+        "Arquivos necessários: "
+        + ", ".join(arquivos_ausentes)
+    )
+
+
+# Upload de arquivos do dataset
 
 @app.route(
     "/criar_dataset",
@@ -88,12 +147,164 @@ PREDICOES_CONSECUTIVAS = 5
 )
 def criar_dataset_api():
 
+    print(
+        ">>> /criar_dataset foi acionada",
+        flush=True
+    )
+
     if "mediaFile" not in request.files:
 
         return jsonify({
             "success": False,
-            "error": "Nenhum arquivo enviado."
+            "error": (
+                "Nenhum arquivo enviado ao Flask."
+            )
         }), 400
+
+    dataset = request.form.get(
+        "dataset",
+        ""
+    ).strip()
+
+    if not dataset:
+
+        return jsonify({
+            "success": False,
+            "error": (
+                "Nome do dataset não informado."
+            )
+        }), 400
+
+    arquivo = request.files[
+        "mediaFile"
+    ]
+
+    if not arquivo.filename:
+
+        return jsonify({
+            "success": False,
+            "error": "Arquivo sem nome."
+        }), 400
+
+    nome_dataset = secure_filename(
+        dataset
+    )
+
+    nome_arquivo = secure_filename(
+        arquivo.filename
+    )
+
+    if not nome_dataset:
+
+        return jsonify({
+            "success": False,
+            "error": (
+                "Nome do dataset inválido."
+            )
+        }), 400
+
+    if not nome_arquivo:
+
+        return jsonify({
+            "success": False,
+            "error": (
+                "Nome do arquivo inválido."
+            )
+        }), 400
+
+    pasta_dataset = os.path.join(
+        LIBRAAS_DIR,
+        nome_dataset
+    )
+
+    caminho_arquivo = os.path.join(
+        pasta_dataset,
+        nome_arquivo
+    )
+
+    try:
+
+        os.makedirs(
+            pasta_dataset,
+            exist_ok=True
+        )
+
+        arquivo.save(
+            caminho_arquivo
+        )
+
+        if not os.path.isfile(
+            caminho_arquivo
+        ):
+
+            raise RuntimeError(
+                "O arquivo não apareceu no disco "
+                "após o salvamento."
+            )
+
+        tamanho = os.path.getsize(
+            caminho_arquivo
+        )
+
+        if tamanho <= 0:
+
+            if os.path.isfile(
+                caminho_arquivo
+            ):
+                os.remove(
+                    caminho_arquivo
+                )
+
+            raise RuntimeError(
+                "O arquivo salvo está vazio."
+            )
+
+        print(
+            "Arquivo salvo:",
+            caminho_arquivo,
+            flush=True
+        )
+
+        return jsonify({
+            "success": True,
+            "rota": "criar_dataset",
+            "dataset": nome_dataset,
+            "arquivo": nome_arquivo,
+            "tamanho": tamanho,
+            "pasta": pasta_dataset,
+            "existe": os.path.isfile(
+                caminho_arquivo
+            )
+        }), 200
+
+    except Exception as erro:
+
+        print(
+            "Erro ao salvar:",
+            repr(erro),
+            flush=True
+        )
+
+        return jsonify({
+            "success": False,
+            "error": str(erro),
+            "pasta": pasta_dataset,
+            "caminho": caminho_arquivo
+        }), 500
+
+
+# Processamento do dataset
+
+@app.route(
+    "/finalizar_dataset",
+    methods=["POST"]
+)
+def finalizar_dataset():
+
+    print(
+        ">>> Finalizando dataset",
+        flush=True
+    )
 
     dataset = request.form.get(
         "dataset",
@@ -105,19 +316,8 @@ def criar_dataset_api():
         return jsonify({
             "success": False,
             "error": (
-                "Nome do dataset inválido."
+                "Dataset não informado."
             )
-        }), 400
-
-    arquivo = request.files[
-        "mediaFile"
-    ]
-
-    if arquivo.filename == "":
-
-        return jsonify({
-            "success": False,
-            "error": "Arquivo inválido."
         }), 400
 
     nome_dataset = secure_filename(
@@ -129,109 +329,23 @@ def criar_dataset_api():
         return jsonify({
             "success": False,
             "error": (
-                "O nome do dataset não possui "
-                "caracteres válidos."
+                "Nome do dataset inválido."
             )
         }), 400
 
-    pasta = os.path.join(
-        BASE_DIR,
-        "libraas",
+    pasta_gesto = os.path.join(
+        LIBRAAS_DIR,
         nome_dataset
     )
 
-    os.makedirs(
-        pasta,
-        exist_ok=True
-    )
-
-    nome_arquivo = secure_filename(
-        arquivo.filename
-    )
-
-    if nome_arquivo == "":
-
-        return jsonify({
-            "success": False,
-            "error": (
-                "O nome do arquivo é inválido."
-            )
-        }), 400
-
-    caminho = os.path.join(
-        pasta,
-        nome_arquivo
-    )
-
-    try:
-
-        arquivo.save(caminho)
-
-    except Exception as erro:
-
-        return jsonify({
-            "success": False,
-            "error": str(erro)
-        }), 500
-
-    return jsonify({
-        "success": True,
-        "arquivo": nome_arquivo,
-        "dataset": nome_dataset
-    }), 200
-
-
-
-# PROCESSAMENTO DO DATASET
-
-
-@app.route(
-    "/finalizar_dataset",
-    methods=["POST"]
-)
-def finalizar_dataset():
-
-    dataset = request.form.get(
-        "dataset",
-        ""
-    ).strip()
-
-    if dataset == "":
-
-        return jsonify({
-            "success": False,
-            "error": "Dataset não informado."
-        }), 400
-
-    dataset_dir = os.path.join(
-        BASE_DIR,
-        "libraas"
-    )
-
-    output_dir = os.path.join(
-        BASE_DIR,
-        "dataset_processado"
-    )
-
-    nome_seguro = secure_filename(
-        dataset
-    )
-
-    pasta_gesto = os.path.join(
-        dataset_dir,
-        nome_seguro
-    )
-
-    print(">>> Finalizando dataset")
-
     print(
         "Dataset:",
-        dataset
+        nome_dataset
     )
 
     print(
         "Entrada:",
-        dataset_dir
+        LIBRAAS_DIR
     )
 
     print(
@@ -241,20 +355,21 @@ def finalizar_dataset():
 
     print(
         "Saída:",
-        output_dir
+        DATASET_PROCESSADO_DIR
     )
 
     if not os.path.isdir(
-        dataset_dir
+        LIBRAAS_DIR
     ):
 
         return jsonify({
             "success": False,
             "error": (
-                "A pasta libraas não "
-                "foi encontrada."
+                "A pasta libraas não foi encontrada. "
+                "Nenhum arquivo foi salvo pela rota "
+                "/criar_dataset."
             ),
-            "caminho": dataset_dir
+            "caminho": LIBRAAS_DIR
         }), 404
 
     if not os.path.isdir(
@@ -264,8 +379,7 @@ def finalizar_dataset():
         return jsonify({
             "success": False,
             "error": (
-                "A pasta do gesto não "
-                "foi encontrada."
+                "A pasta do gesto não foi encontrada."
             ),
             "caminho": pasta_gesto
         }), 404
@@ -283,21 +397,25 @@ def finalizar_dataset():
         )
     ]
 
+    print(
+        "Arquivos encontrados:",
+        len(arquivos)
+    )
+
     if len(arquivos) == 0:
 
         return jsonify({
             "success": False,
             "error": (
-                "A pasta do gesto "
-                "está vazia."
+                "A pasta do gesto está vazia."
             )
         }), 400
 
     try:
 
         resultado = criar_dataset(
-            dataset_dir,
-            output_dir
+            LIBRAAS_DIR,
+            DATASET_PROCESSADO_DIR
         )
 
         if not isinstance(
@@ -308,9 +426,8 @@ def finalizar_dataset():
             return jsonify({
                 "success": False,
                 "error": (
-                    "A função criar_dataset "
-                    "não retornou um "
-                    "dicionário válido."
+                    "A função criar_dataset não "
+                    "retornou um resultado válido."
                 )
             }), 500
 
@@ -323,23 +440,26 @@ def finalizar_dataset():
                 resultado
             ), 400
 
-        shutil.rmtree(
-            dataset_dir
-        )
+        if os.path.isdir(
+            LIBRAAS_DIR
+        ):
 
-        print(
-            "Pasta removida:",
-            dataset_dir
-        )
+            shutil.rmtree(
+                LIBRAAS_DIR
+            )
 
         return jsonify({
             **resultado,
             "success": True,
-            "dataset": dataset,
-            "arquivos_recebidos": (
-                len(arquivos)
+            "dataset": nome_dataset,
+            "arquivos_recebidos": len(
+                arquivos
             ),
-            "pasta_libraas_removida": True
+            "pasta_libraas_removida": (
+                not os.path.exists(
+                    LIBRAAS_DIR
+                )
+            )
         }), 200
 
     except Exception as erro:
@@ -355,9 +475,7 @@ def finalizar_dataset():
         }), 500
 
 
-
-# INICIAR TREINAMENTO
-
+# Iniciar treinamento
 
 @app.route(
     "/treinar_modelo",
@@ -404,9 +522,7 @@ def treinar_modelo_api():
     ), 202
 
 
-
-# STATUS DO TREINAMENTO
-
+# Status do treinamento
 
 @app.route(
     "/status_treinamento",
@@ -428,9 +544,7 @@ def status_treinamento_api():
     ), 200
 
 
-
-# CANCELAR TREINAMENTO
-
+# Cancelar treinamento
 
 @app.route(
     "/cancelar_treinamento",
@@ -467,15 +581,22 @@ def cancelar_treinamento_api():
     ), 200
 
 
-
-# ANÁLISE DE FOTO/VÍDEO
-
+# Análise de fotos e vídeos
 
 @app.route(
     "/analisar",
     methods=["POST"]
 )
 def analisar():
+
+    if not recursos_traducao_disponiveis():
+
+        return jsonify({
+            "success": False,
+            "error": (
+                erro_recursos_traducao()
+            )
+        }), 400
 
     print(
         ">>> Requisição recebida!"
@@ -487,12 +608,19 @@ def analisar():
 
     if not arquivos:
 
-        return jsonify(
-            success=False,
-            error="Nenhum arquivo enviado."
-        ), 400
+        return jsonify({
+            "success": False,
+            "error": (
+                "Nenhum arquivo enviado."
+            )
+        }), 400
 
     resultados = []
+
+    os.makedirs(
+        UPLOAD_DIR,
+        exist_ok=True
+    )
 
     for arquivo in arquivos:
 
@@ -519,30 +647,20 @@ def analisar():
 
             continue
 
-        nome = (
+        nome_temporario = (
             f"{uuid.uuid4()}{extensao}"
         )
 
-        upload_folder = os.path.join(
-            BASE_DIR,
-            "uploads"
-        )
-
-        os.makedirs(
-            upload_folder,
-            exist_ok=True
-        )
-
         caminho = os.path.join(
-            upload_folder,
-            nome
-        )
-
-        arquivo.save(
-            caminho
+            UPLOAD_DIR,
+            nome_temporario
         )
 
         try:
+
+            arquivo.save(
+                caminho
+            )
 
             if extensao in [
                 ".jpg",
@@ -567,12 +685,9 @@ def analisar():
             if sequencia is None:
 
                 resultados.append({
-                    "arquivo": (
-                        arquivo.filename
-                    ),
+                    "arquivo": arquivo.filename,
                     "erro": (
-                        "Não foi possível "
-                        "processar."
+                        "Não foi possível processar."
                     )
                 })
 
@@ -608,15 +723,13 @@ def analisar():
                     caminho
                 )
 
-    return jsonify(
-        success=True,
-        resultados=resultados
-    ), 200
+    return jsonify({
+        "success": True,
+        "resultados": resultados
+    }), 200
 
 
-
-# TRADUÇÃO EM TEMPO REAL
-
+# Tradução em tempo real
 
 @app.route(
     "/traducao_tempo_real",
@@ -630,6 +743,16 @@ def traducao_tempo_real():
     global gesto_confirmado
     global contador_confirmacao
 
+    if not recursos_traducao_disponiveis():
+
+        return jsonify({
+            "status": "erro",
+            "error": (
+                erro_recursos_traducao()
+            ),
+            "texto": ""
+        }), 400
+
     inicio = time.time()
 
     if "frame" not in request.files:
@@ -638,7 +761,8 @@ def traducao_tempo_real():
             "status": "erro",
             "error": (
                 "Nenhum frame recebido."
-            )
+            ),
+            "texto": " ".join(frase)
         }), 400
 
     arquivo = request.files[
@@ -659,117 +783,152 @@ def traducao_tempo_real():
 
         return jsonify({
             "status": "erro",
-            "error": "Frame inválido."
+            "error": (
+                "Frame inválido."
+            ),
+            "texto": " ".join(frase)
         }), 400
 
-    landmarks = (
-        extrair_landmarks_traducao(
-            frame
+    try:
+
+        landmarks = (
+            extrair_landmarks_traducao(
+                frame
+            )
         )
-    )
 
-    if landmarks is None:
+        if landmarks is None:
 
-        return jsonify({
-            "status": "aguardando",
-            "texto": " ".join(frase)
-        }), 200
+            return jsonify({
+                "status": "aguardando",
+                "texto": " ".join(frase)
+            }), 200
 
-    buffer.append(
-        landmarks
-    )
+        buffer.append(
+            landmarks
+        )
 
-    if len(buffer) > SEQUENCE_LENGTH:
+        if len(buffer) > SEQUENCE_LENGTH:
 
-        buffer.pop(0)
+            buffer.pop(0)
 
-    if len(buffer) < SEQUENCE_LENGTH:
+        if len(buffer) < SEQUENCE_LENGTH:
 
-        return jsonify({
-            "status": "aguardando",
-            "texto": " ".join(frase)
-        }), 200
+            return jsonify({
+                "status": "aguardando",
+                "texto": " ".join(frase)
+            }), 200
 
-    sequencia = np.array(
-        buffer
-    )
+        sequencia = np.array(
+            buffer,
+            dtype=np.float32
+        )
 
-    sequencia = normalizar(
-        sequencia
-    )
+        sequencia = normalizar(
+            sequencia
+        )
 
-    sequencia = sequencia.reshape(
-        1,
-        SEQUENCE_LENGTH,
-        FEATURES
-    )
+        sequencia = sequencia.reshape(
+            1,
+            SEQUENCE_LENGTH,
+            FEATURES
+        )
 
-    gesto, confianca = prever(
-        sequencia
-    )
+        gesto, confianca = prever(
+            sequencia
+        )
 
-    print(
-        f"{gesto} -> {confianca:.2%}"
-    )
+        print(
+            f"{gesto} -> {confianca:.2%}"
+        )
 
-    if confianca < CONFIANCA_MINIMA:
+        if confianca < CONFIANCA_MINIMA:
 
-        gesto_confirmado = None
+            gesto_confirmado = None
 
-        contador_confirmacao = 0
+            contador_confirmacao = 0
 
-        return jsonify({
-            "status": "aguardando",
-            "texto": " ".join(frase)
-        }), 200
+            return jsonify({
+                "status": "aguardando",
+                "texto": " ".join(frase)
+            }), 200
 
-    if gesto == gesto_confirmado:
+        if gesto == gesto_confirmado:
 
-        contador_confirmacao += 1
+            contador_confirmacao += 1
 
-    else:
+        else:
 
-        gesto_confirmado = gesto
+            gesto_confirmado = gesto
 
-        contador_confirmacao = 1
+            contador_confirmacao = 1
 
-    if (
-        contador_confirmacao <
-        PREDICOES_CONSECUTIVAS
-    ):
+        if (
+            contador_confirmacao <
+            PREDICOES_CONSECUTIVAS
+        ):
 
-        return jsonify({
-            "status": "analisando",
-            "texto": " ".join(frase),
-            "gesto": gesto,
-            "confirmacao": (
-                contador_confirmacao
-            )
-        }), 200
+            return jsonify({
+                "status": "analisando",
+                "texto": " ".join(frase),
+                "gesto": gesto,
+                "confirmacao": (
+                    contador_confirmacao
+                )
+            }), 200
 
-    print(
-        "Confirmação:",
-        gesto_confirmado,
-        contador_confirmacao
-    )
+        print(
+            "Confirmação:",
+            gesto_confirmado,
+            contador_confirmacao
+        )
 
-    if (
-        contador_confirmacao >=
-        PREDICOES_CONSECUTIVAS
-    ):
+        if (
+            contador_confirmacao >=
+            PREDICOES_CONSECUTIVAS
+        ):
 
-        if gesto != ultimo_gesto:
+            if gesto != ultimo_gesto:
 
-            frase.append(
-                gesto
-            )
+                frase.append(
+                    gesto
+                )
 
-            ultimo_gesto = gesto
+                ultimo_gesto = gesto
+
+                print(
+                    ">>> GESTO ACEITO:",
+                    gesto
+                )
+
+            buffer.clear()
+
+            gesto_confirmado = None
+
+            contador_confirmacao = 0
+
+            ultimo_gesto = None
 
             print(
-                ">>> GESTO ACEITO:",
-                gesto
+                "Tempo:",
+                round(
+                    time.time() - inicio,
+                    2
+                ),
+                "seg"
             )
+
+        return jsonify({
+            "status": "traduzido",
+            "texto": " ".join(frase)
+        }), 200
+
+    except Exception as erro:
+
+        print(
+            "Erro na tradução em tempo real:",
+            repr(erro)
+        )
 
         buffer.clear()
 
@@ -777,26 +936,14 @@ def traducao_tempo_real():
 
         contador_confirmacao = 0
 
-        ultimo_gesto = None
-
-        print(
-            "Tempo:",
-            round(
-                time.time() - inicio,
-                2
-            ),
-            "seg"
-        )
-
-    return jsonify(
-        status="traduzido",
-        texto=" ".join(frase)
-    ), 200
+        return jsonify({
+            "status": "erro",
+            "error": str(erro),
+            "texto": " ".join(frase)
+        }), 500
 
 
-
-# LIMPAR TRADUÇÃO
-
+# Limpar tradução
 
 @app.route(
     "/limpar_traducao",
@@ -820,10 +967,12 @@ def limpar_traducao():
 
     contador_confirmacao = 0
 
-    return jsonify(
-        ok=True
-    ), 200
+    return jsonify({
+        "ok": True
+    }), 200
 
+
+# Iniciar servidor
 
 if __name__ == "__main__":
 

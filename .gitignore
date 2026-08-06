@@ -9,3 +9,7 @@ dataset_nlp.py
 loss.png
 ajax/temp/
 resultados_treinamento/
+modelo_gesto.keras
+labels.npy
+scaler_mean.npy
+escaler_scale.npy
