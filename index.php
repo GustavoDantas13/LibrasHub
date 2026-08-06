@@ -29,6 +29,12 @@
                                 <span>Tradução foto/video</span>
                             </a>
                         </li>
+                        <li>
+                            <a href="templates/administrador.php">
+                                <img src="static/images/folder.png">
+                                <span>Administrador</span>
+                            </a>
+                        </li>
                         <!-- Ajuda removido do menu principal conforme solicitado; permanece no menu hambúrguer -->
                     </ul>
                 </nav>

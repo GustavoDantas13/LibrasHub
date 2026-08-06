@@ -417,3 +417,823 @@ a {
 .btn-limpar:hover{
     background:#c9302c;
 }
+
+
+.admin-content {
+    width: calc(100% - var(--sidebar-width));
+    max-width: none;
+
+    margin-left: var(--sidebar-width);
+
+    padding: 32px;
+
+    box-sizing: border-box;
+
+    align-items: stretch;
+    justify-content: flex-start;
+}
+
+.admin-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 28px;
+}
+
+.admin-header h1 {
+    margin: 6px 0 8px;
+    font-size: clamp(1.8rem, 3vw, 2.7rem);
+    line-height: 1.1;
+}
+
+.admin-header p {
+    margin: 0;
+    max-width: 760px;
+    color: #666;
+    line-height: 1.6;
+}
+
+.admin-eyebrow,
+.section-step {
+    display: inline-block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #555;
+}
+
+.sidebar-card-content {
+    display: flex;
+    justify-content: center;
+}
+
+
+/* ==================================================
+   SEÇÕES
+================================================== */
+
+.admin-section {
+    margin-bottom: 32px;
+    padding: 28px;
+    background: #ffffff;
+    border: 1px solid #e4e4e4;
+    border-radius: 20px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.05);
+}
+
+.section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.section-heading h2 {
+    margin: 6px 0 8px;
+    font-size: 1.55rem;
+}
+
+.section-heading p {
+    margin: 0;
+    max-width: 760px;
+    color: #666;
+    line-height: 1.5;
+}
+
+
+/* ==================================================
+   FORMULÁRIO DO DATASET
+================================================== */
+
+.admin-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-weight: 700;
+    color: #262626;
+}
+
+.form-group small {
+    color: #777;
+}
+
+.dataset-input {
+    width: 100%;
+    padding: 13px 15px;
+    border: 1px solid #cccccc;
+    border-radius: 10px;
+    background: #ffffff;
+    font-size: 1rem;
+    box-sizing: border-box;
+    outline: none;
+    transition:
+        border-color 0.2s,
+        box-shadow 0.2s;
+}
+
+.dataset-input:focus {
+    border-color: #555555;
+    box-shadow: 0 0 0 3px rgba(80, 80, 80, 0.12);
+}
+
+
+.upload-area {
+    min-height: 190px;
+    padding: 26px;
+    border: 2px dashed #bdbdbd;
+    border-radius: 16px;
+    background: #fafafa;
+    text-align: center;
+    box-sizing: border-box;
+    transition:
+        border-color 0.2s,
+        background-color 0.2s,
+        transform 0.2s;
+}
+
+.upload-area.highlight {
+    border-color: #444444;
+    background: #f1f1f1;
+    transform: translateY(-2px);
+}
+
+.upload-info {
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.upload-info p {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.upload-info span {
+    color: #777;
+    font-size: 0.88rem;
+}
+
+.upload-icon {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #e9e9e9;
+    font-size: 1.8rem;
+    line-height: 1;
+}
+
+.preview-area {
+    max-height: 360px;
+    overflow-y: auto;
+    padding: 4px;
+    text-align: left;
+}
+
+.preview-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 8px 14px;
+    background: #fafafa;
+    border-bottom: 1px solid #e4e4e4;
+}
+
+.preview-header span {
+    color: #666;
+}
+
+.lista-arquivos {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 10px;
+}
+
+.arquivo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px;
+    border: 1px solid #e2e2e2;
+    border-radius: 11px;
+    background: #ffffff;
+}
+
+.arquivo img,
+.arquivo .icone {
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+    border-radius: 8px;
+}
+
+.arquivo img {
+    object-fit: cover;
+}
+
+.arquivo .icone {
+    display: grid;
+    place-items: center;
+    background: #eeeeee;
+    font-size: 1.55rem;
+}
+
+.arquivo .info {
+    min-width: 0;
+    flex: 1;
+}
+
+.arquivo .nome {
+    overflow: hidden;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.arquivo .tamanho {
+    margin-top: 4px;
+    color: #777;
+    font-size: 0.82rem;
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.status-display {
+    min-height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    border-radius: 12px;
+    background: #f3f3f3;
+    color: #353535;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.acoes-upload,
+.training-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+button {
+    font: inherit;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-training,
+.btn-danger-outline,
+.btn-small {
+    border-radius: 9px;
+    cursor: pointer;
+    transition:
+        transform 0.18s,
+        opacity 0.18s,
+        background-color 0.18s;
+}
+
+.btn-primary,
+.btn-training {
+    padding: 11px 20px;
+    border: 1px solid #222222;
+    background: #222222;
+    color: #ffffff;
+}
+
+.btn-secondary {
+    padding: 9px 16px;
+    border: 1px solid #444444;
+    background: #ffffff;
+    color: #222222;
+}
+
+.btn-danger-outline {
+    padding: 11px 20px;
+    border: 1px solid #a94442;
+    background: #ffffff;
+    color: #a94442;
+}
+
+.btn-small {
+    padding: 7px 12px;
+    border: 1px solid #cccccc;
+    background: #ffffff;
+    color: #444444;
+    font-size: 0.85rem;
+}
+
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-training:hover,
+.btn-danger-outline:hover,
+.btn-small:hover {
+    transform: translateY(-1px);
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    transform: none;
+}
+
+.training-heading {
+    align-items: center;
+}
+
+.training-progress-card,
+.chart-card,
+.metric-card,
+.training-log-card {
+    border: 1px solid #e2e2e2;
+    border-radius: 14px;
+    background: #ffffff;
+}
+
+.training-progress-card {
+    margin-bottom: 18px;
+    padding: 18px;
+}
+
+.training-progress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 12px;
+}
+
+.training-progress-header > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.training-progress-label {
+    color: #777;
+    font-size: 0.82rem;
+}
+
+#trainingPercent {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.progress-track {
+    width: 100%;
+    height: 12px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e8e8e8;
+}
+
+.progress-fill {
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: #333333;
+    transition: width 0.35s ease;
+}
+
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.metric-card {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-height: 120px;
+    padding: 18px;
+    box-sizing: border-box;
+}
+
+.metric-label {
+    color: #666;
+    font-size: 0.86rem;
+}
+
+.metric-value {
+    font-size: 1.65rem;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+}
+
+.metric-card small {
+    margin-top: auto;
+    color: #888;
+}
+
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.chart-card {
+    min-width: 0;
+    padding: 18px;
+}
+
+.chart-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.chart-card-header h3,
+.training-log-header h3 {
+    margin: 0 0 4px;
+    font-size: 1.05rem;
+}
+
+.chart-card-header p,
+.training-log-header p {
+    margin: 0;
+    color: #777;
+    font-size: 0.88rem;
+}
+
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    color: #666;
+    font-size: 0.76rem;
+}
+
+.chart-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.legend-line {
+    width: 15px;
+    height: 3px;
+    display: inline-block;
+    border-radius: 999px;
+}
+
+.legend-training {
+    background: #252525;
+}
+
+.legend-validation {
+    background: #999999;
+}
+
+.chart-wrapper {
+    position: relative;
+    min-height: 290px;
+}
+
+.chart-wrapper canvas {
+    width: 100%;
+    height: 290px;
+    display: block;
+}
+
+.chart-empty {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    color: #888;
+    text-align: center;
+    pointer-events: none;
+}
+
+
+.training-log-card {
+    padding: 18px;
+}
+
+.training-log-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.training-log {
+    width: 100%;
+    min-height: 230px;
+    resize: vertical;
+    padding: 15px;
+    border: 1px solid #d2d2d2;
+    border-radius: 10px;
+    background: #171717;
+    color: #eeeeee;
+    font-family:
+        Consolas,
+        "Courier New",
+        monospace;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    box-sizing: border-box;
+}
+
+
+
+@media (max-width: 1100px) {
+
+    .metrics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+@media (max-width: 760px) {
+
+    .admin-content {
+        padding: 18px;
+    }
+
+    .admin-section {
+        padding: 20px;
+    }
+
+    .section-heading,
+    .training-heading,
+    .chart-card-header,
+    .training-log-header {
+        flex-direction: column;
+    }
+
+    .status-grid,
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .training-actions,
+    .acoes-upload {
+        width: 100%;
+    }
+
+    .training-actions button,
+    .acoes-upload button {
+        flex: 1;
+    }
+
+}
+
+.content.admin-content {
+    width: calc(100% - var(--sidebar-width));
+    max-width: none;
+
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: var(--sidebar-width);
+
+    padding: 32px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+
+    min-width: 0;
+    min-height: 100vh;
+
+    border-radius: 0;
+}
+
+.admin-content > * {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.admin-content .upload-container {
+    width: 100%;
+    max-width: 100%;
+
+    display: block;
+
+    align-items: initial;
+    justify-content: initial;
+}
+
+.admin-content .upload-area {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    min-height: 190px;
+
+    display: block;
+
+    padding: 26px;
+    margin: 0;
+
+    overflow: hidden;
+}
+
+.admin-content .upload-info {
+    width: 100%;
+    min-height: 140px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.admin-content .preview-area {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: 360px;
+
+    display: block;
+
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    align-items: initial;
+    justify-content: initial;
+}
+
+.admin-content .preview-area[hidden],
+.admin-content .upload-info[hidden],
+.sidebar-menu[hidden] {
+    display: none !important;
+}
+
+.admin-section {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+
+    overflow: hidden;
+}
+
+.status-grid,
+.metrics-grid,
+.charts-grid {
+    width: 100%;
+    min-width: 0;
+}
+
+.chart-card,
+.chart-wrapper,
+.training-log-card,
+.training-progress-card,
+.metric-card {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.chart-wrapper canvas {
+    width: 100%;
+    max-width: 100%;
+}
+
+.training-log {
+    width: 100%;
+    max-width: 100%;
+}
+
+@media (max-width: 1100px) {
+
+    .content.admin-content {
+        padding: 24px;
+    }
+
+    .metrics-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+
+@media (max-width: 900px) {
+
+    .content.admin-content {
+        width: 100%;
+        margin-left: 0;
+        padding: 20px;
+    }
+
+}
+
+@media (max-width: 760px) {
+
+    .content.admin-content {
+        width: 100%;
+        margin-left: 0;
+        padding: 14px;
+    }
+
+    .admin-section {
+        padding: 18px;
+        border-radius: 14px;
+    }
+
+    .admin-header {
+        margin-bottom: 20px;
+    }
+
+    .section-heading,
+    .training-heading,
+    .chart-card-header,
+    .training-log-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .status-grid,
+    .metrics-grid,
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .training-actions,
+    .acoes-upload {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .training-actions button,
+    .acoes-upload button {
+        width: 100%;
+        flex: none;
+    }
+
+    .upload-area {
+        padding: 18px;
+    }
+
+}
+
+@media (max-width: 480px) {
+
+    .content.admin-content {
+        padding: 10px;
+    }
+
+    .admin-section {
+        padding: 14px;
+    }
+
+    .metric-value {
+        font-size: 1.35rem;
+    }
+
+    .chart-card {
+        padding: 12px;
+    }
+
+    .chart-wrapper,
+    .chart-wrapper canvas {
+        min-height: 230px;
+        height: 230px;
+    }
+
+}

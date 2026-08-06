@@ -39,6 +39,12 @@
                                 <span>Tradução foto/video</span>
                             </a>
                         </li>
+                        <li>
+                            <a href="administrador.php">
+                                <img src="../static/images/folder.png">
+                                <span>Administrador</span>
+                            </a>
+                        </li>
                         <!-- Ajuda removido do menu principal conforme solicitado; permanece no menu hambúrguer -->
                     </ul>
                 </nav>
@@ -167,7 +173,7 @@
 
         const formData = new FormData();
 
-        for(const file of files){
+        for(const file of arquivosSelecionados){
             
         formData.append("mediaFile[]", file);
 
@@ -180,7 +186,7 @@
         if(data.success){
 
             const frase = data.resultados
-            .map(r => r.gesto)
+            .map(r => r.gesto ?? r.erro)
             .join(" ");
 
         resultDiv.textContent = frase;
