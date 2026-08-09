@@ -13,3 +13,6 @@ modelo_gesto.keras
 labels.npy
 scaler_mean.npy
 escaler_scale.npy
+templates/back/
+static/css/back/
+templates/uploads_historico/
