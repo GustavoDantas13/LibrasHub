@@ -1,210 +1,1155 @@
+<?php
+
+session_start();
+
+require_once "configs/config.php";
+
+if (empty($_SESSION["usuario_id"])) {
+    header("Location: ../index.php");
+    exit;
+}
+
+$idUsuarioAtual = (int) $_SESSION["usuario_id"];
+
+$stmt = $pdo->prepare("
+    SELECT
+        id_usuario,
+        nm_usuario,
+        email_usuario,
+        tp_usuario
+    FROM usuario
+    WHERE id_usuario = ?
+    LIMIT 1
+");
+
+$stmt->execute([
+    $idUsuarioAtual
+]);
+
+$usuarioAtual = $stmt->fetch(
+    PDO::FETCH_ASSOC
+);
+
+if (!$usuarioAtual) {
+    $_SESSION = [];
+    session_destroy();
+
+    header("Location: ../index.php");
+    exit;
+}
+
+$_SESSION["usuario_tipo"] =
+    $usuarioAtual["tp_usuario"];
+
+$ehAdmin =
+    strcasecmp(
+        trim(
+            $usuarioAtual["tp_usuario"]
+        ),
+        "Administrador"
+    ) === 0;
+
+$erro = "";
+$sucesso = "";
+
+$nomeContato =
+    $usuarioAtual["nm_usuario"];
+
+$emailContato =
+    $usuarioAtual["email_usuario"];
+
+$mensagemContato = "";
+
+if (
+    $_SERVER["REQUEST_METHOD"] === "POST"
+    &&
+    ($_POST["acao"] ?? "") === "enviar_contato"
+) {
+
+    $nomeContato = trim(
+        $_POST["nome"]
+        ?? ""
+    );
+
+    $emailContato = trim(
+        $_POST["email"]
+        ?? ""
+    );
+
+    $mensagemContato = trim(
+        $_POST["mensagem"]
+        ?? ""
+    );
+
+    if (
+        $nomeContato === ""
+        ||
+        $emailContato === ""
+        ||
+        $mensagemContato === ""
+    ) {
+
+        $erro =
+            "Preencha todos os campos.";
+
+    } elseif (
+        !filter_var(
+            $emailContato,
+            FILTER_VALIDATE_EMAIL
+        )
+    ) {
+
+        $erro =
+            "Informe um email válido.";
+
+    } elseif (
+        mb_strlen(
+            $mensagemContato
+        ) < 10
+    ) {
+
+        $erro =
+            "A mensagem deve possuir pelo menos 10 caracteres.";
+
+    } elseif (
+        mb_strlen(
+            $mensagemContato
+        ) > 5000
+    ) {
+
+        $erro =
+            "A mensagem é muito longa.";
+
+    } else {
+
+        $emailSuporte =
+            "librashubsuporte@gmail.com";
+
+        $assunto =
+            "Contato LibrasHub - "
+            .
+            $nomeContato;
+
+        $nomeSeguro =
+            str_replace(
+                [
+                    "\r",
+                    "\n"
+                ],
+                "",
+                $nomeContato
+            );
+
+        $emailSeguro =
+            str_replace(
+                [
+                    "\r",
+                    "\n"
+                ],
+                "",
+                $emailContato
+            );
+
+        $corpo =
+            "Nova mensagem enviada pela página de ajuda do LibrasHub.\n\n"
+            .
+            "Usuário: "
+            .
+            $nomeSeguro
+            .
+            "\n"
+            .
+            "Email: "
+            .
+            $emailSeguro
+            .
+            "\n"
+            .
+            "ID do usuário: "
+            .
+            $idUsuarioAtual
+            .
+            "\n\n"
+            .
+            "Mensagem:\n"
+            .
+            $mensagemContato
+            .
+            "\n";
+
+        $headers = [
+            "MIME-Version: 1.0",
+            "Content-Type: text/plain; charset=UTF-8",
+            "From: LibrasHub <no-reply@librashub.com>",
+            "Reply-To: "
+            .
+            $emailSeguro
+        ];
+
+        $enviado =
+            @mail(
+                $emailSuporte,
+                $assunto,
+                $corpo,
+                implode(
+                    "\r\n",
+                    $headers
+                )
+            );
+
+        if ($enviado) {
+
+            $sucesso =
+                "Mensagem enviada com sucesso.";
+
+            $mensagemContato =
+                "";
+
+        } else {
+
+            $erro =
+                "Não foi possível enviar o email. Verifique a configuração de SMTP do PHP/XAMPP.";
+        }
+    }
+}
+
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Página de Ajuda – Programa de LIBRAS</title>
-    <link rel="stylesheet" href="../static/css/style.css">
-    <style>
-        /* Pequeno estilo local para a página de ajuda para combinar com o layout existente */
-        .help-wrapper {
-            margin-left: 0;
-            padding: 12px 24px;
-            box-sizing: border-box;
-            display: block;
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
+<link
+    rel="icon"
+    type="image/png"
+    href="../static/images/librashub-logo.png"
+>
+
+<title>
+    LibrasHub - Ajuda
+</title>
+
+<link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.3.0/css/all.min.css"
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+>
+
+<link
+    rel="stylesheet"
+    href="../static/css/style.css"
+>
+
+<script>
+
+(function(){
+
+    try{
+
+        var KEYS = {
+            theme: "libras_theme",
+            fontSize: "libras_fontsize",
+            contrast: "libras_contrast"
+        };
+
+        var FONT_SCALES = {
+            pequena: 0.9,
+            media: 1,
+            grande: 1.15
+        };
+
+        function safeGet(
+            key,
+            fallback
+        ){
+
+            try{
+
+                var valor =
+                    localStorage.getItem(
+                        key
+                    );
+
+                return valor !== null
+                    ? valor
+                    : fallback;
+
+            }catch(e){
+
+                return fallback;
+            }
         }
-        .help-card {
-            background: #f3f3f3;
-            border-radius: 20px;
-            padding: 28px 36px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-            margin: 12px 16px;
-            max-width: none;
-            width: calc(100% - 40px);
+
+        var tema =
+            safeGet(
+                KEYS.theme,
+                "claro"
+            );
+
+        var efetivo =
+            tema;
+
+        if(
+            tema === "automatico"
+        ){
+
+            efetivo =
+                (
+                    window.matchMedia
+                    &&
+                    window.matchMedia(
+                        "(prefers-color-scheme: dark)"
+                    ).matches
+                )
+                    ? "escuro"
+                    : "claro";
         }
-        /* Headings: larger and distinct font */
-        .help-card h1 { font-size: 2rem; margin-bottom: 12px; font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-weight:700; }
-    .help-card h2 { font-size: 1.6rem; margin-top: 18px; font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-weight:600; }
-    .help-card h3 { font-size: 1.15rem; margin-top:14px; font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-weight:600; }
-    .help-card p, .help-card li { line-height: 1.6; color: #222; font-size:1rem }
-        .contact { margin-top: 18px; }
-        .faq ol { margin-left: 18px; }
-        @media (max-width: 900px) {
-            .help-wrapper { margin-left: 0; padding: 16px; }
-            .help-card { padding: 18px; margin: 8px; width: auto; }
-            .help-card h1 { font-size: 1.6rem; }
-            .help-card h2 { font-size: 1.2rem; }
+
+        if(
+            efetivo === "escuro"
+        ){
+
+            document.documentElement
+                .setAttribute(
+                    "data-theme",
+                    "dark"
+                );
         }
-    </style>
+
+        document.documentElement
+            .style
+            .setProperty(
+                "--font-scale",
+                FONT_SCALES[
+                    safeGet(
+                        KEYS.fontSize,
+                        "media"
+                    )
+                ] || 1
+            );
+
+        if(
+            safeGet(
+                KEYS.contrast,
+                "off"
+            ) === "on"
+        ){
+
+            document.documentElement
+                .classList
+                .add(
+                    "high-contrast"
+                );
+        }
+
+    }catch(e){}
+
+})();
+
+</script>
+
+<style>
+
+.sidebar{
+    position:fixed;
+    top:0;
+    left:0;
+    width:260px;
+    height:100vh;
+    overflow-y:auto;
+}
+
+.content{
+    margin-left:260px;
+    flex:1;
+    padding:40px;
+}
+
+.ajuda-grid{
+    display:grid;
+    grid-template-columns:1.3fr 1fr;
+    gap:20px;
+}
+
+.faq-item{
+    border-bottom:1px solid var(--bg);
+}
+
+.faq-q{
+    padding:14px 0;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    cursor:pointer;
+    font-size:0.875rem;
+    font-weight:600;
+}
+
+.faq-q span{
+    transition:transform 0.2s;
+}
+
+.faq-a{
+    display:none;
+    padding-bottom:14px;
+    font-size:0.8125rem;
+    color:var(--text-muted);
+    line-height:1.5;
+}
+
+.faq-item.open .faq-a{
+    display:block;
+}
+
+.faq-item.open .faq-q span{
+    transform:rotate(180deg);
+}
+
+.tips-box{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:18px;
+    margin-top:16px;
+}
+
+.tips-box ul{
+    padding-left:18px;
+    font-size:0.8125rem;
+    line-height:1.8;
+    color:var(--text-muted);
+}
+
+.contact-alert{
+    margin-bottom:16px;
+}
+
+.contact-note{
+    margin-top:12px;
+    color:var(--text-muted);
+    font-size:0.72rem;
+    line-height:1.5;
+}
+
+@media(max-width:900px){
+
+    .content{
+        margin-left:0;
+        padding:20px;
+    }
+
+    .ajuda-grid{
+        grid-template-columns:1fr;
+    }
+}
+
+@media(max-width:600px){
+
+    .content{
+        padding:16px;
+    }
+}
+
+</style>
+
 </head>
+
 <body>
-    <div class="container">
-        <aside class="sidebar" aria-label="Sidebar principal">
-            <div>
-                <nav>
-                    <ul>
-                        <li>
-                            <a href="../index.php">
-                                <img src="../static/images/house.png" alt="" srcset="">
-                                <span>Home</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="leitor.php">
-                                <img src="../static/images/videocam.png'" alt="" srcset="">
-                                <span>Leitura e tradução</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="fotovideo.php">
-                                <img src="../static/images/image (1).png" alt="" srcset="">
-                                <span>Tradução foto/video</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="administrador.php">
-                                <img src="../static/images/folder.png">
-                                <span>Administrador</span>
-                            </a>
-                        </li>
-                        <!-- Ajuda removido do menu principal conforme solicitado; permanece no menu hambúrguer -->
-                    </ul>
-                </nav>
-            </div>
-            <div>
-                <div class="sidebar-card" role="button" aria-label="Menu rápido" id="hamburgerMenu">
-                    <div style="display:flex;flex-direction:column;justify-content:center">
-                      <img src="../static/images/information.png" alt="" srcset="">
-                    </div>
-                </div>
-                <div class="sidebar-menu" id="sidebarMenu" style="display:none;">
-                    <ul>
-                        <li><a href="ajuda.php">Ajuda</a></li>
-                    </ul>
-                </div>
-            </div>
-        </aside>
 
-        <main class="content">
-            <div class="help-wrapper">
-                <div class="help-card">
-                    <h1><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:10px"><path d="M12 2a1 1 0 00-1 1v7H4a1 1 0 000 2h7v7a1 1 0 002 0v-7h7a1 1 0 000-2h-7V3a1 1 0 00-1-1z"></path></svg> Machine in Libras</h1>
-                    <p><strong><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:8px"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zM11 6h2v6h-2V6zm0 8h2v2h-2v-2z"></path></svg> Sobre o Programa</strong></p>
-                    <p>Bem-vindo(a) ao <strong>Machine in Libras</strong>! Este programa foi desenvolvido para auxiliar estudantes, intérpretes e professores na compreensão, tradução e prática da Língua Brasileira de Sinais (LIBRAS). Aqui você pode aprender sinais, testar seu conhecimento e usar ferramentas de tradução entre Português e Libras.</p>
 
-                    <h2><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:8px"><path d="M12 2L2 7l10 5 10-5-10-5zm0 7.5L4.5 7 12 3.5 19.5 7 12 9.5zM2 17l10 5 10-5v-2l-10 5-10-5v2z"></path></svg> Navegação Principal</h2>
+<aside class="sidebar">
 
-                    <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:8px"><path d="M3 4v16h18V4H3zm2 2h14v2H5V6zm0 4h9v2H5v-2z"/></svg> Tradutor de Texto</h3>
-                    <p><strong>O que faz:</strong> Converte videos e/ou imagens de sinais ou movimentos em libras para textos em português interpretados</p>
-                    <p><strong>Como usar:</strong></p>
-                    <ol>
-                        <li>selecione sua foto ou video ou utilize de sua própria camera. Estando em um lugar onde a camera possa te ver o programa faz o resto. .</li>
-                    
-                    </ol>
-                    <p><em>Dica:</em> Faça movimentos abertos e sempre em um ambiente bem iluminado</p>
+    <div class="sidebar-top">
 
-                   
+        <div class="logo">
 
-                    <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:8px"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-2h2v2zm1.07-7.75l-.9.92A2.99 2.99 0 0011 12v1h-2v-1c0-1.1.45-2.1 1.17-2.83l1.24-1.26A2 2 0 1010 5.5V6h2v-.5A4 4 0 1114.07 9.25z"/></svg> Perguntas Frequentes (FAQ)</h3>
-                    <div class="faq">
-                        <ol>
-                            <li><strong>O programa funciona offline?</strong> Não, por ser um site o programa precisa de internet para ser utilizado.</li>
-                            <li><strong>O programa reconhece sinais pela câmera?</strong> Sim. Essa é a nossa maior virtude, facilitar a vida de quem interpreta ou quem está aprendendo a linguagem.</li>
-                            <li><strong>Há suporte técnico?</strong> Sim. Envie um e-mail para machinelibras@gmail.com.br; Contato.</li>
-                        </ol>
-                    </div>
+            <img
+                src="../static/images/librashub-logo.png"
+                alt="LibrasHub"
+                class="logo-img"
+                style="
+                    width:32px;
+                    height:32px;
+                    object-fit:contain;
+                    border-radius:6px;
+                "
+            >
 
-                    <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:8px"><path d="M21 16.5a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 16.5v-9A2.5 2.5 0 015.5 5h13A2.5 2.5 0 0121 7.5v9zM5.5 7.5l6 4 6-4"/></svg> Contato e Suporte</h3>
-                    <p class="contact">E-mail: <a href="mailto:suporte@interpretaLibras.com.br"> machinelibras@gmail.com.br</a><br>
-                    Site: <a href="https://www.interpretalibras.com.br" target="_blank" rel="noopener">www.interpretalibras.com.br</a><br>
-                    WhatsApp: (11) 99999-9999</p>
+            LibrasHub
 
-                    <div style="margin-top:24px;">
-                        <h3>Enviar mensagem ao suporte</h3>
-                        <form id="contactForm">
-                            <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                                <input type="text" id="cfName" name="name" placeholder="Seu nome" style="flex:1;min-width:220px;padding:10px;border-radius:6px;border:1px solid #ddd;" required>
-                                <input type="email" id="cfEmail" name="email" placeholder="Seu e-mail" style="flex:1;min-width:220px;padding:10px;border-radius:6px;border:1px solid #ddd;" required>
-                            </div>
-                            <div style="margin-top:12px;">
-                                <textarea id="cfMessage" name="message" rows="5" placeholder="Sua mensagem" style="width:100%;padding:12px;border-radius:6px;border:1px solid #ddd;" required></textarea>
-                            </div>
-                            <div style="margin-top:12px;display:flex;gap:12px;align-items:center;">
-                                <button type="submit" class="submit-button" style="width:auto;padding:10px 18px;">Enviar</button>
-                                <div id="contactStatus" style="color:#333;font-size:0.95rem;"></div>
-                            </div>
-                        </form>
-                        <p style="margin-top:8px;font-size:0.9rem;color:#555;">Observação: este formulário usa um endpoint de exemplo (<code>/contact</code>). Sem backend configurado, será usada a alternativa por e-mail (mailto).</p>
-                    </div>
-                </div>
-            </div>
-        </main>
+        </div>
+
+
+        <a
+            class="nav-item"
+            href="home.php"
+            data-page="home"
+        >
+
+            <span class="nav-icon">
+
+                <i
+                    class="fa-regular fa-house"
+                    style="color:#fdbe00;"
+                ></i>
+
+            </span>
+
+            Início
+
+        </a>
+
+
+        <a
+            class="nav-item"
+            href="leitor.php"
+            data-page="leitor"
+        >
+
+            <span class="nav-icon">
+
+                <i
+                    class="fa-solid fa-video"
+                    style="color:#fdbe00;"
+                ></i>
+
+            </span>
+
+            Leitor
+
+        </a>
+
+
+        <a
+            class="nav-item"
+            href="upload.php"
+            data-page="upload"
+        >
+
+            <span class="nav-icon">
+
+                <i
+                    class="fa-solid fa-upload"
+                    style="color:#fdbe00;"
+                ></i>
+
+            </span>
+
+            Upload
+
+        </a>
+
+
+        <a
+            class="nav-item"
+            href="historico.php"
+            data-page="historico"
+        >
+
+            <span class="nav-icon">
+
+                <i
+                    class="fa-solid fa-arrow-rotate-left"
+                    style="color:#fdbe00;"
+                ></i>
+
+            </span>
+
+            Histórico
+
+        </a>
+
+
+        <a
+            class="nav-item"
+            href="ajuda.php"
+            data-page="ajuda"
+        >
+
+            <span class="nav-icon">
+
+                <i
+                    class="fa-solid fa-question"
+                    style="color:#fdbe00;"
+                ></i>
+
+            </span>
+
+            Ajuda
+
+        </a>
+
+
+        <a
+            class="nav-item"
+            href="comunidade.php"
+            data-page="comunidade"
+        >
+
+            <span class="nav-icon">
+
+                <i
+                    class="fa-solid fa-users"
+                    style="color:#fdbe00;"
+                ></i>
+
+            </span>
+
+            Comunidade
+
+        </a>
+
+
+        <?php if ($ehAdmin): ?>
+
+            <a
+                class="nav-item"
+                href="admin.php"
+                data-page="admin"
+            >
+
+                <span class="nav-icon">
+
+                    <i
+                        class="fa-solid fa-shield-halved"
+                        style="color:#fdbe00;"
+                    ></i>
+
+                </span>
+
+                Administração
+
+            </a>
+
+        <?php endif; ?>
+
     </div>
 
-    <script>
-        // Reusar lógica do menu hambúrguer já presente em outras páginas
-        document.addEventListener('DOMContentLoaded', function() {
-            var hamburger = document.getElementById('hamburgerMenu');
-            var menu = document.getElementById('sidebarMenu');
-            hamburger.addEventListener('click', function(e){
-                e.stopPropagation();
-                if(menu.style.display === 'none' || menu.style.display === ''){
-                    menu.style.display = 'block';
-                } else {
-                    menu.style.display = 'none';
-                }
-            });
-            document.addEventListener('click', function(e){
-                if(menu.style.display === 'block' && !menu.contains(e.target) && !hamburger.contains(e.target)){
-                    menu.style.display = 'none';
-                }
-            });
-        });
 
-        // Contact form handling: try POST to /contact, fallback to mailto
-        document.addEventListener('DOMContentLoaded', function(){
-            var form = document.getElementById('contactForm');
-            var status = document.getElementById('contactStatus');
-            if(!form) return;
-            form.addEventListener('submit', function(e){
-                e.preventDefault();
-                status.textContent = 'Enviando...';
-                var data = {
-                    name: document.getElementById('cfName').value,
-                    email: document.getElementById('cfEmail').value,
-                    message: document.getElementById('cfMessage').value
-                };
+    <div class="sidebar-bottom">
 
-                // Tenta enviar para /contact (placeholder). Se falhar, abre mailto como fallback.
-                fetch('/contact', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                }).then(function(res){
-                    if(res.ok){
-                        status.textContent = 'Mensagem enviada com sucesso.';
-                        form.reset();
-                    } else {
-                        throw new Error('Erro no envio');
-                    }
-                }).catch(function(){
-                    // fallback mailto
-                    var mailto = 'mailto:suporte@interpretaLibras.com.br'
-                        + '?subject=' + encodeURIComponent('Contato: ' + data.name)
-                        + '&body=' + encodeURIComponent('Email: ' + data.email + '\n\n' + data.message);
-                    window.location.href = mailto;
-                    status.textContent = 'Se o envio automático falhar, sua aplicação de e-mail abriu para envio manual.';
-                });
-            });
-        });
+        <a
+            class="nav-item"
+            href="configuracoes.php"
+            data-page="configuracoes"
+        >
 
-        // Global F1 handler: direciona para help.html e previne a ajuda do navegador
-        window.addEventListener('keydown', function(e){
-            if(e.key === 'F1'){
-                e.preventDefault();
-                window.location.href = "{{ url_for('ajuda') }}";
+            <span class="nav-icon">
+
+                <i
+                    class="fa-solid fa-gear"
+                    style="color:#fdbe00;"
+                ></i>
+
+            </span>
+
+            Configurações
+
+        </a>
+
+
+        <a
+            class="nav-item"
+            href="usuario.php"
+            data-page="usuario"
+        >
+
+            <span class="nav-icon">
+
+                <i
+                    class="fa-solid fa-user"
+                    style="color:#fdbe00;"
+                ></i>
+
+            </span>
+
+            Usuário
+
+        </a>
+
+    </div>
+
+</aside>
+
+
+<main class="content">
+
+    <div class="page-title">
+        Ajuda
+    </div>
+
+    <div class="page-subtitle">
+        Encontre respostas rápidas ou entre em contato com o suporte.
+    </div>
+
+
+    <?php if ($erro !== ""): ?>
+
+        <div class="alert alert-error contact-alert">
+
+            <span aria-hidden="true">
+                ⚠
+            </span>
+
+            <span>
+                <?= htmlspecialchars(
+                    $erro,
+                    ENT_QUOTES,
+                    "UTF-8"
+                ) ?>
+            </span>
+
+        </div>
+
+    <?php endif; ?>
+
+
+    <?php if ($sucesso !== ""): ?>
+
+        <div class="alert alert-success contact-alert">
+
+            <span aria-hidden="true">
+                ✓
+            </span>
+
+            <span>
+                <?= htmlspecialchars(
+                    $sucesso,
+                    ENT_QUOTES,
+                    "UTF-8"
+                ) ?>
+            </span>
+
+        </div>
+
+    <?php endif; ?>
+
+
+    <div class="ajuda-grid">
+
+
+        <div>
+
+
+            <div class="panel">
+
+                <div
+                    class="side-title"
+                    style="
+                        font-size:0.75rem;
+                        font-weight:700;
+                        margin-bottom:8px;
+                    "
+                >
+                    ❓ PERGUNTAS FREQUENTES
+                </div>
+
+
+                <div class="faq-item">
+
+                    <div
+                        class="faq-q"
+                        onclick="toggleFaq(this)"
+                    >
+                        Como usar a câmera?
+                        <span>⌄</span>
+                    </div>
+
+                    <div class="faq-a">
+                        Vá até a tela Leitor e clique diretamente na área da câmera.
+                        Conceda a permissão solicitada pelo navegador para iniciar a tradução.
+                    </div>
+
+                </div>
+
+
+                <div class="faq-item">
+
+                    <div
+                        class="faq-q"
+                        onclick="toggleFaq(this)"
+                    >
+                        Como enviar vídeos?
+                        <span>⌄</span>
+                    </div>
+
+                    <div class="faq-a">
+                        Na tela Upload, arraste os arquivos até a área indicada
+                        ou clique em "Selecionar arquivos".
+                    </div>
+
+                </div>
+
+
+                <div class="faq-item">
+
+                    <div
+                        class="faq-q"
+                        onclick="toggleFaq(this)"
+                    >
+                        Problemas com a câmera?
+                        <span>⌄</span>
+                    </div>
+
+                    <div class="faq-a">
+                        Verifique as permissões de câmera do navegador
+                        e se nenhum outro aplicativo está utilizando o dispositivo.
+                    </div>
+
+                </div>
+
+
+                <div class="faq-item">
+
+                    <div
+                        class="faq-q"
+                        onclick="toggleFaq(this)"
+                    >
+                        Quais formatos são suportados?
+                        <span>⌄</span>
+                    </div>
+
+                    <div class="faq-a">
+                        Imagens: JPG, JPEG e PNG.
+                        Vídeos: MP4, AVI, MOV e MKV.
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="tips-box">
+
+                <div
+                    class="side-title"
+                    style="
+                        font-size:0.75rem;
+                        font-weight:700;
+                        margin-bottom:6px;
+                    "
+                >
+                    💡 DICAS PARA MELHOR PRECISÃO
+                </div>
+
+                <ul>
+                    <li>
+                        Use boa iluminação ou uma fonte de luz
+                    </li>
+
+                    <li>
+                        Mantenha as mãos bem visíveis
+                    </li>
+
+                    <li>
+                        Faça gestos de forma clara e pausada
+                    </li>
+
+                    <li>
+                        Verifique se sua câmera não está muito longe
+                    </li>
+                </ul>
+
+            </div>
+
+        </div>
+
+
+        <div class="panel">
+
+            <div
+                class="side-title"
+                style="
+                    font-size:0.75rem;
+                    font-weight:700;
+                    margin-bottom:12px;
+                "
+            >
+                ✉ ENTRE EM CONTATO
+            </div>
+
+
+            <form
+                method="POST"
+                action="ajuda.php"
+            >
+
+                <input
+                    type="hidden"
+                    name="acao"
+                    value="enviar_contato"
+                >
+
+
+                <div class="field">
+
+                    <label for="nome">
+                        Nome
+                    </label>
+
+                    <input
+                        type="text"
+                        id="nome"
+                        name="nome"
+                        placeholder="Seu nome"
+                        value="<?= htmlspecialchars(
+                            $nomeContato,
+                            ENT_QUOTES,
+                            "UTF-8"
+                        ) ?>"
+                        maxlength="255"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="field">
+
+                    <label for="email">
+                        Email
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="seuemail@exemplo.com"
+                        value="<?= htmlspecialchars(
+                            $emailContato,
+                            ENT_QUOTES,
+                            "UTF-8"
+                        ) ?>"
+                        maxlength="255"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="field">
+
+                    <label for="mensagem">
+                        Mensagem
+                    </label>
+
+                    <textarea
+                        id="mensagem"
+                        name="mensagem"
+                        rows="5"
+                        placeholder="Descreva sua dúvida ou problema..."
+                        maxlength="5000"
+                        required
+                    ><?= htmlspecialchars(
+                        $mensagemContato,
+                        ENT_QUOTES,
+                        "UTF-8"
+                    ) ?></textarea>
+
+                </div>
+
+
+                <button
+                    type="submit"
+                    class="btn btn-block"
+                >
+                    Enviar Mensagem
+                </button>
+
+            </form>
+
+
+            <div class="contact-note">
+                O envio de email depende da configuração de SMTP do servidor PHP.
+            </div>
+
+        </div>
+
+
+    </div>
+
+</main>
+
+
+<script>
+
+function toggleFaq(
+    elemento
+){
+
+    const item =
+        elemento.closest(
+            ".faq-item"
+        );
+
+    if(
+        !item
+    ){
+        return;
+    }
+
+    item.classList.toggle(
+        "open"
+    );
+}
+
+</script>
+
+
+<button
+    class="menu-toggle"
+    id="menuToggle"
+    aria-label="Abrir menu"
+>
+    &#9776;
+</button>
+
+
+<div
+    class="sidebar-overlay"
+    id="sidebarOverlay"
+></div>
+
+
+<script>
+
+(function(){
+
+    var btn =
+        document.getElementById(
+            "menuToggle"
+        );
+
+    var sidebar =
+        document.querySelector(
+            ".sidebar"
+        );
+
+    var overlay =
+        document.getElementById(
+            "sidebarOverlay"
+        );
+
+    if(
+        !btn
+        ||
+        !sidebar
+        ||
+        !overlay
+    ){
+        return;
+    }
+
+    function open(){
+
+        sidebar.classList.add(
+            "open"
+        );
+
+        overlay.classList.add(
+            "open"
+        );
+
+        btn.innerHTML =
+            "&#10005;";
+    }
+
+    function close(){
+
+        sidebar.classList.remove(
+            "open"
+        );
+
+        overlay.classList.remove(
+            "open"
+        );
+
+        btn.innerHTML =
+            "&#9776;";
+    }
+
+    btn.addEventListener(
+        "click",
+        function(){
+
+            sidebar.classList.contains(
+                "open"
+            )
+                ? close()
+                : open();
+        }
+    );
+
+    overlay.addEventListener(
+        "click",
+        close
+    );
+
+    sidebar
+        .querySelectorAll(
+            "a"
+        )
+        .forEach(
+            function(link){
+
+                link.addEventListener(
+                    "click",
+                    close
+                );
             }
-        });
-    </script>
+        );
+
+})();
+
+</script>
+
+
+<script>
+
+(function(){
+
+    var path =
+        window.location.pathname
+            .split("/")
+            .pop()
+            .replace(
+                /\.php$/,
+                ""
+            );
+
+    document
+        .querySelectorAll(
+            ".sidebar .nav-item[data-page]"
+        )
+        .forEach(
+            function(link){
+
+                if(
+                    link.dataset.page ===
+                    path
+                ){
+
+                    link.classList.add(
+                        "active"
+                    );
+                }
+            }
+        );
+
+})();
+
+</script>
+
+
 </body>
+
 </html>

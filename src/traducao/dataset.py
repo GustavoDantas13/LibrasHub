@@ -1,169 +1,297 @@
-import cv2
 import os
 import numpy as np
-import mediapipe as mp
 
-# ! Funções
+from src.traducao.processar_imagem import (
+    processar_imagem_dataset
+)
 
-from src.traducao.processar_imagem import processar_imagem_dataset
-from src.traducao.processar_video import processar_video_dataset
+from src.traducao.processar_video import (
+    processar_video_dataset
+)
+
 from src.traducao.augmentar import augmentar
-from src.traducao.extrair_landmarks import hands, pose
-
-# CONFIGURAÇÕES
 
 
 SEQUENCE_LENGTH = 30
 
 
-def criar_dataset(dataset_dir, output_dir):
+def criar_dataset(
+    dataset_dir,
+    output_dir
+):
 
-    os.makedirs(output_dir, exist_ok=True)
+    if not os.path.isdir(
+        dataset_dir
+    ):
+
+        return {
+            "success": False,
+            "error": (
+                "A pasta de entrada do dataset "
+                "não foi encontrada."
+            ),
+            "total_amostras": 0,
+            "datasets_gerados": []
+        }
+
+
+    os.makedirs(
+        output_dir,
+        exist_ok=True
+    )
+
 
     total_amostras = 0
 
-    for gesto in sorted(os.listdir(dataset_dir)):
+    datasets_gerados = []
 
-        pasta = os.path.join(dataset_dir, gesto)
 
-        if not os.path.isdir(pasta):
+    for gesto in sorted(
+        os.listdir(
+            dataset_dir
+        )
+    ):
+
+        pasta = os.path.join(
+            dataset_dir,
+            gesto
+        )
+
+
+        if not os.path.isdir(
+            pasta
+        ):
             continue
 
-        print(f"\n {gesto}")
+
+        print()
+        print(
+            "Processando gesto:",
+            gesto
+        )
+
 
         amostras = []
 
-        arquivos = sorted(os.listdir(pasta))
+
+        arquivos = sorted(
+            os.listdir(
+                pasta
+            )
+        )
+
 
         for arquivo in arquivos:
 
-            caminho = os.path.join(pasta, arquivo)
+            caminho = os.path.join(
+                pasta,
+                arquivo
+            )
 
-            ext = os.path.splitext(arquivo)[1].lower()
+
+            if not os.path.isfile(
+                caminho
+            ):
+                continue
+
+
+            ext = os.path.splitext(
+                arquivo
+            )[1].lower()
+
 
             try:
 
                 if ext in [
-
                     ".jpg",
-
                     ".jpeg",
-
                     ".png"
-
                 ]:
 
-                    seq = processar_imagem_dataset(caminho)
+                    seq = (
+                        processar_imagem_dataset(
+                            caminho
+                        )
+                    )
+
 
                 elif ext in [
-
                     ".mp4",
-
                     ".avi",
-
                     ".mov",
-
                     ".mkv"
-
                 ]:
 
-                    seq = processar_video_dataset(caminho)
+                    seq = (
+                        processar_video_dataset(
+                            caminho
+                        )
+                    )
+
 
                 else:
 
                     continue
 
+
                 if seq is None:
+
+                    print(
+                        "   ✖",
+                        arquivo,
+                        "Sequência inválida."
+                    )
 
                     continue
 
-                amostras.append(seq)
 
-                # augmentation
                 amostras.append(
-
-                    augmentar(seq)
-
+                    seq
                 )
+
+
+                amostras.append(
+                    augmentar(
+                        seq
+                    )
+                )
+
 
                 total_amostras += 2
 
-                print("   ✔", arquivo)
+
+                print(
+                    "   ✔",
+                    arquivo
+                )
+
 
             except Exception as erro:
 
                 print(
-
                     "   ✖",
-
                     arquivo,
-
                     erro
-
                 )
 
-        if len(amostras):
 
-            amostras = np.array(
+        if len(amostras) == 0:
 
-                amostras,
-
-                dtype=np.float32
-
+            print(
+                "Nenhuma amostra válida para:",
+                gesto
             )
 
-            np.save(
+            continue
 
-                os.path.join(
 
-                    output_dir,
+        amostras = np.array(
+            amostras,
+            dtype=np.float32
+        )
 
-                    gesto + ".npy"
 
+        nome_arquivo = (
+            gesto
+            +
+            ".npy"
+        )
+
+
+        caminho_saida = os.path.join(
+            output_dir,
+            nome_arquivo
+        )
+
+
+        np.save(
+            caminho_saida,
+            amostras
+        )
+
+
+        caminho_absoluto = os.path.abspath(
+            caminho_saida
+        )
+
+
+        datasets_gerados.append({
+
+            "gesto":
+                gesto,
+
+            "arquivo":
+                nome_arquivo,
+
+            "caminho":
+                caminho_absoluto,
+
+            "amostras":
+                len(
+                    amostras
                 ),
 
+            "shape":
+                list(
+                    amostras.shape
+                )
+        })
+
+
+        print()
+
+        print(
+            gesto
+        )
+
+        print(
+            "   Amostras:",
+            len(
                 amostras
-
             )
+        )
 
-            print()
+        print(
+            "   Shape:",
+            amostras.shape
+        )
 
-            print(
+        print(
+            "   Dataset:",
+            caminho_absoluto
+        )
 
-                f"{gesto}"
 
-            )
+    if len(
+        datasets_gerados
+    ) == 0:
 
-            print(
+        return {
+            "success": False,
+            "error": (
+                "Nenhum dataset foi gerado."
+            ),
+            "total_amostras": 0,
+            "datasets_gerados": []
+        }
 
-                "   Amostras:",
-
-                len(amostras)
-
-            )
-
-            print(
-
-                "   Shape:",
-
-                amostras.shape
-
-            )
-
-        else:
-
-            print(
-
-                "Nenhuma amostra válida."
-
-            )
-
-        
-    hands.close()
-    pose.close()
 
     return {
         "success": True,
-        "total_amostras": total_amostras,
-        "output": output_dir
+
+        "total_amostras":
+            total_amostras,
+
+        "datasets_processados":
+            len(
+                datasets_gerados
+            ),
+
+        "output":
+            os.path.abspath(
+                output_dir
+            ),
+
+        "datasets_gerados":
+            datasets_gerados
     }

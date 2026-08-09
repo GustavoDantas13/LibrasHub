@@ -306,10 +306,12 @@ def finalizar_dataset():
         flush=True
     )
 
+
     dataset = request.form.get(
         "dataset",
         ""
     ).strip()
+
 
     if dataset == "":
 
@@ -320,9 +322,11 @@ def finalizar_dataset():
             )
         }), 400
 
+
     nome_dataset = secure_filename(
         dataset
     )
+
 
     if nome_dataset == "":
 
@@ -333,10 +337,12 @@ def finalizar_dataset():
             )
         }), 400
 
+
     pasta_gesto = os.path.join(
         LIBRAAS_DIR,
         nome_dataset
     )
+
 
     print(
         "Dataset:",
@@ -358,19 +364,25 @@ def finalizar_dataset():
         DATASET_PROCESSADO_DIR
     )
 
+
     if not os.path.isdir(
         LIBRAAS_DIR
     ):
 
         return jsonify({
             "success": False,
+
             "error": (
                 "A pasta libraas não foi encontrada. "
                 "Nenhum arquivo foi salvo pela rota "
                 "/criar_dataset."
             ),
-            "caminho": LIBRAAS_DIR
+
+            "caminho":
+                LIBRAAS_DIR
+
         }), 404
+
 
     if not os.path.isdir(
         pasta_gesto
@@ -378,17 +390,26 @@ def finalizar_dataset():
 
         return jsonify({
             "success": False,
+
             "error": (
                 "A pasta do gesto não foi encontrada."
             ),
-            "caminho": pasta_gesto
+
+            "caminho":
+                pasta_gesto
+
         }), 404
 
+
     arquivos = [
+
         nome
-        for nome in os.listdir(
+
+        for nome
+        in os.listdir(
             pasta_gesto
         )
+
         if os.path.isfile(
             os.path.join(
                 pasta_gesto,
@@ -397,19 +418,26 @@ def finalizar_dataset():
         )
     ]
 
+
     print(
         "Arquivos encontrados:",
-        len(arquivos)
+        len(
+            arquivos
+        )
     )
+
 
     if len(arquivos) == 0:
 
         return jsonify({
             "success": False,
+
             "error": (
                 "A pasta do gesto está vazia."
             )
+
         }), 400
+
 
     try:
 
@@ -418,6 +446,7 @@ def finalizar_dataset():
             DATASET_PROCESSADO_DIR
         )
 
+
         if not isinstance(
             resultado,
             dict
@@ -425,11 +454,14 @@ def finalizar_dataset():
 
             return jsonify({
                 "success": False,
+
                 "error": (
                     "A função criar_dataset não "
                     "retornou um resultado válido."
                 )
+
             }), 500
+
 
         if not resultado.get(
             "success",
@@ -440,6 +472,100 @@ def finalizar_dataset():
                 resultado
             ), 400
 
+
+        dataset_gerado = None
+
+
+        for item in resultado.get(
+            "datasets_gerados",
+            []
+        ):
+
+            if (
+                item.get(
+                    "gesto"
+                )
+                ==
+                nome_dataset
+            ):
+
+                dataset_gerado = item
+
+                break
+
+
+        if dataset_gerado is None:
+
+            return jsonify({
+                "success": False,
+
+                "error": (
+                    "O processamento terminou, "
+                    "mas o arquivo do gesto solicitado "
+                    "não foi encontrado."
+                )
+
+            }), 500
+
+
+        caminho_absoluto = (
+            dataset_gerado.get(
+                "caminho"
+            )
+        )
+
+
+        if (
+            not caminho_absoluto
+            or
+            not os.path.isfile(
+                caminho_absoluto
+            )
+        ):
+
+            return jsonify({
+                "success": False,
+
+                "error": (
+                    "O arquivo .npy não foi encontrado "
+                    "após o processamento."
+                )
+
+            }), 500
+
+
+        base_dir = os.path.dirname(
+            os.path.abspath(
+                __file__
+            )
+        )
+
+
+        caminho_relativo = os.path.relpath(
+            caminho_absoluto,
+            base_dir
+        )
+
+
+        caminho_relativo = (
+            caminho_relativo
+            .replace(
+                "\\",
+                "/"
+            )
+        )
+
+
+        print(
+            "Dataset gerado:",
+            caminho_relativo
+        )
+
+
+        # Remove a pasta libraas
+        # somente depois que o .npy
+        # foi confirmado.
+
         if os.path.isdir(
             LIBRAAS_DIR
         ):
@@ -448,32 +574,78 @@ def finalizar_dataset():
                 LIBRAAS_DIR
             )
 
-        return jsonify({
-            **resultado,
-            "success": True,
-            "dataset": nome_dataset,
-            "arquivos_recebidos": len(
-                arquivos
-            ),
-            "pasta_libraas_removida": (
-                not os.path.exists(
-                    LIBRAAS_DIR
-                )
+
+        pasta_removida = (
+            not os.path.exists(
+                LIBRAAS_DIR
             )
+        )
+
+
+        print(
+            "Pasta libraas removida:",
+            pasta_removida
+        )
+
+
+        return jsonify({
+
+            "success": True,
+
+            "nome_gesto":
+                nome_dataset,
+
+            "dataset":
+                caminho_relativo,
+
+            "arquivo_dataset":
+                dataset_gerado.get(
+                    "arquivo"
+                ),
+
+            "total_amostras":
+                dataset_gerado.get(
+                    "amostras",
+                    0
+                ),
+
+            "shape":
+                dataset_gerado.get(
+                    "shape",
+                    []
+                ),
+
+            "arquivos_recebidos":
+                len(
+                    arquivos
+                ),
+
+            "pasta_libraas_removida":
+                pasta_removida
+
         }), 200
+
 
     except Exception as erro:
 
         print(
             "Erro ao finalizar dataset:",
-            repr(erro)
+            repr(
+                erro
+            )
         )
 
-        return jsonify({
-            "success": False,
-            "error": str(erro)
-        }), 500
 
+        return jsonify({
+
+            "success": False,
+
+            "error":
+                str(
+                    erro
+                )
+
+        }), 500
 
 # Iniciar treinamento
 
