@@ -1679,6 +1679,14 @@ async function salvarHistorico(
             !item
             ||
             !item.gesto
+            ||
+            item.valido === false
+            ||
+            String(
+                item.gesto
+            ).trim().toLowerCase()
+                ===
+                "gesto inválido"
         ){
             continue;
         }
@@ -2516,6 +2524,14 @@ uploadForm.addEventListener(
                     .filter(
                         item =>
                             item.gesto
+                            &&
+                            item.valido !== false
+                            &&
+                            String(
+                                item.gesto
+                            ).trim().toLowerCase()
+                                !==
+                                "gesto inválido"
                     )
 
                     .map(

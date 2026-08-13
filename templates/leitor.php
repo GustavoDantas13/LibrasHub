@@ -1349,6 +1349,32 @@ function tratarRespostaTraducao(
 
 
 
+        case "invalido":
+
+            palavraAtual.textContent =
+                "Gesto inválido";
+
+
+            statusHand.textContent =
+                Number.isFinite(
+                    Number(
+                        dados.confianca
+                    )
+                )
+                    ? `Gesto inválido (${Number(
+                        dados.confianca
+                    ).toFixed(2)}%)`
+                    : "Gesto inválido";
+
+
+            dotHand.classList.remove(
+                "on"
+            );
+
+            break;
+
+
+
         case "aguardando":
 
             statusHand.textContent =

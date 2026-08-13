@@ -80,7 +80,7 @@ SEQUENCE_LENGTH = 30
 
 FEATURES = 158
 
-CONFIANCA_MINIMA = 0.95
+CONFIANCA_MINIMA = 0.90
 
 PREDICOES_CONSECUTIVAS = 5
 
@@ -869,13 +869,24 @@ def analisar():
                 sequencia
             )
 
+            valido = (
+                confianca >=
+                CONFIANCA_MINIMA
+            )
+
             resultados.append({
                 "arquivo": arquivo.filename,
-                "gesto": gesto,
+                "gesto": (
+                    gesto
+                    if valido
+                    else "Gesto inválido"
+                ),
+                "gesto_previsto": gesto,
                 "confianca": round(
                     confianca * 100,
                     2
-                )
+                ),
+                "valido": valido
             })
 
         except Exception as erro:
@@ -1021,7 +1032,13 @@ def traducao_tempo_real():
             contador_confirmacao = 0
 
             return jsonify({
-                "status": "aguardando",
+                "status": "invalido",
+                "gesto": "Gesto inválido",
+                "gesto_previsto": gesto,
+                "confianca": round(
+                    confianca * 100,
+                    2
+                ),
                 "texto": " ".join(frase)
             }), 200
 
