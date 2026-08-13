@@ -1,465 +1,619 @@
-<?php
+<?php 
 
-session_start();
+session_start(); 
 
-require_once "configs/config.php";
-
-
-$erro = "";
-$sucesso = "";
+require_once "configs/config.php"; 
 
 
-$TIPOS_PERMITIDOS = [
-    "Usuário Simples",
-    "Intérprete",
-    "Educador"
-];
+$erro = ""; 
+$sucesso = ""; 
 
 
-if (
-    $_SERVER["REQUEST_METHOD"] === "POST"
-) {
-
-    $nome = trim(
-        $_POST["nome"]
-        ?? ""
-    );
-
-    $email = trim(
-        $_POST["email"]
-        ?? ""
-    );
-
-    $tipoUsuario = trim(
-        $_POST["tipo_usuario"]
-        ?? "Usuário Simples"
-    );
-
-    $senha =
-        $_POST["senha"]
-        ?? "";
-
-    $confirmarSenha =
-        $_POST["confirmar_senha"]
-        ?? "";
+$TIPOS_PERMITIDOS = [ 
+    "Usuário Comum", 
+    "Usuário Comunitário" 
+]; 
 
 
-    if (
-        $nome === "" ||
-        $email === "" ||
-        $senha === "" ||
-        $confirmarSenha === ""
-    ) {
+if ( 
+    $_SERVER["REQUEST_METHOD"] === "POST" 
+) { 
 
-        $erro =
-            "Preencha todos os campos obrigatórios.";
+    $nome = trim( 
+        $_POST["nome"] 
+        ?? "" 
+    ); 
 
-    } elseif (
-        mb_strlen($nome) < 2
-    ) {
+    $email = trim( 
+        $_POST["email"] 
+        ?? "" 
+    ); 
 
-        $erro =
-            "Informe um nome válido.";
+    $tipoUsuario = trim( 
+        $_POST["tipo_usuario"] 
+        ?? "Usuário Comum" 
+    ); 
 
-    } elseif (
-        !filter_var(
-            $email,
-            FILTER_VALIDATE_EMAIL
-        )
-    ) {
+    $senha = 
+        $_POST["senha"] 
+        ?? ""; 
 
-        $erro =
-            "Informe um email válido.";
-
-    } elseif (
-        !in_array(
-            $tipoUsuario,
-            $TIPOS_PERMITIDOS,
-            true
-        )
-    ) {
-
-        $erro =
-            "Tipo de usuário inválido.";
-
-    } elseif (
-        strlen($senha) < 6
-    ) {
-
-        $erro =
-            "A senha deve possuir pelo menos 6 caracteres.";
-
-    } elseif (
-        $senha !==
-        $confirmarSenha
-    ) {
-
-        $erro =
-            "As senhas não coincidem.";
-
-    } else {
-
-        try {
-
-            $stmt = $pdo->prepare("
-                SELECT
-                    id_usuario
-                FROM usuario
-                WHERE email_usuario = ?
-                LIMIT 1
-            ");
-
-            $stmt->execute([
-                $email
-            ]);
+    $confirmarSenha = 
+        $_POST["confirmar_senha"] 
+        ?? ""; 
 
 
-            if (
-                $stmt->fetchColumn()
-            ) {
+    if ( 
+        $nome === "" || 
+        $email === "" || 
+        $senha === "" || 
+        $confirmarSenha === "" 
+    ) { 
 
-                $erro =
-                    "Já existe uma conta cadastrada com este email.";
+        $erro = 
+            "Preencha todos os campos obrigatórios."; 
 
-            } else {
+    } elseif ( 
+        mb_strlen($nome) < 2 
+    ) { 
 
-                $senhaHash =
-                    password_hash(
-                        $senha,
-                        PASSWORD_DEFAULT
-                    );
+        $erro = 
+            "Informe um nome válido."; 
+
+    } elseif ( 
+        !filter_var( 
+            $email, 
+            FILTER_VALIDATE_EMAIL 
+        ) 
+    ) { 
+
+        $erro = 
+            "Informe um email válido."; 
+
+    } elseif ( 
+        !in_array( 
+            $tipoUsuario, 
+            $TIPOS_PERMITIDOS, 
+            true 
+        ) 
+    ) { 
+
+        $erro = 
+            "Tipo de usuário inválido."; 
+
+    } elseif ( 
+        strlen($senha) < 6 
+    ) { 
+
+        $erro = 
+            "A senha deve possuir pelo menos 6 caracteres."; 
+
+    } elseif ( 
+        $senha !== 
+        $confirmarSenha 
+    ) { 
+
+        $erro = 
+            "As senhas não coincidem."; 
+
+    } else { 
+
+        try { 
+
+            $stmt = $pdo->prepare(" 
+                SELECT 
+                    id_usuario 
+                FROM usuario 
+                WHERE email_usuario = ? 
+                LIMIT 1 
+            "); 
+
+            $stmt->execute([ 
+                $email 
+            ]); 
 
 
-                if (
-                    $senhaHash === false
-                ) {
+            if ( 
+                $stmt->fetchColumn() 
+            ) { 
 
-                    $erro =
-                        "Não foi possível processar a senha.";
+                $erro = 
+                    "Já existe uma conta cadastrada com este email."; 
 
-                } else {
+            } else { 
 
-                    $stmt = $pdo->prepare("
-                        INSERT INTO usuario (
-                            nm_usuario,
-                            email_usuario,
-                            senha_usuario,
-                            tp_usuario
-                        )
-                        VALUES (
-                            ?,
-                            ?,
-                            ?,
-                            ?
-                        )
-                    ");
+                $senhaHash = 
+                    password_hash( 
+                        $senha, 
+                        PASSWORD_DEFAULT 
+                    ); 
 
 
-                    $stmt->execute([
-                        $nome,
-                        $email,
-                        $senhaHash,
-                        $tipoUsuario
-                    ]);
+                if ( 
+                    $senhaHash === false 
+                ) { 
+
+                    $erro = 
+                        "Não foi possível processar a senha."; 
+
+                } else { 
+
+                    $stmt = $pdo->prepare(" 
+                        INSERT INTO usuario ( 
+                            nm_usuario, 
+                            email_usuario, 
+                            senha_usuario, 
+                            tp_usuario 
+                        ) 
+                        VALUES ( 
+                            ?, 
+                            ?, 
+                            ?, 
+                            ? 
+                        ) 
+                    "); 
 
 
-                    $sucesso =
-                        "Conta criada com sucesso. "
-                        . "Você já pode entrar no sistema.";
+                    $stmt->execute([ 
+                        $nome, 
+                        $email, 
+                        $senhaHash, 
+                        $tipoUsuario 
+                    ]); 
 
 
-                    $_POST = [];
-                }
+                    $sucesso = 
+                        "Conta criada com sucesso. " 
+                        . "Você já pode entrar no sistema."; 
+
+
+                    $_POST = []; 
+                } 
+            } 
+
+
+        } catch ( 
+            PDOException $e 
+        ) { 
+
+            if ( 
+                $e->getCode() === "23000" 
+            ) { 
+
+                $erro = 
+                    "Este email já está cadastrado."; 
+
+            } else { 
+
+                $erro = 
+                    "Não foi possível criar a conta. " 
+                    . "Tente novamente."; 
+            } 
+        } 
+    } 
+} 
+
+?> 
+<!DOCTYPE html> 
+<html lang="pt-BR"> 
+
+<head> 
+
+    <meta charset="UTF-8"> 
+
+    <meta 
+        name="viewport" 
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover" 
+    > 
+
+    <title>LibrasHub - Cadastro</title> 
+
+    <link 
+        rel="stylesheet" 
+        href="../static/css/style.css" 
+    > 
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        .auth-wrap {
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: clamp(24px, 5vw, 56px) 20px;
+        }
+
+        .auth-box {
+            width: min(100%, 480px);
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .auth-icon {
+            font-size: clamp(2.2rem, 6vw, 3rem);
+            line-height: 1;
+        }
+
+        .auth-title {
+            font-size: clamp(1.55rem, 4vw, 2rem);
+            line-height: 1.2;
+        }
+
+        .auth-subtitle {
+            font-size: clamp(.88rem, 2vw, 1rem);
+            line-height: 1.5;
+        }
+
+        .field {
+            width: 100%;
+        }
+
+        .field input,
+        .field select {
+            width: 100%;
+            max-width: 100%;
+            min-height: 46px;
+        }
+
+        .btn.btn-block {
+            width: 100%;
+            min-height: 46px;
+            white-space: normal;
+        }
+
+        .alert {
+            width: 100%;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+        }
+
+        .auth-footer {
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 768px) {
+            .auth-wrap {
+                align-items: flex-start;
+                padding: 34px 18px;
             }
 
-
-        } catch (
-            PDOException $e
-        ) {
-
-            if (
-                $e->getCode() === "23000"
-            ) {
-
-                $erro =
-                    "Este email já está cadastrado.";
-
-            } else {
-
-                $erro =
-                    "Não foi possível criar a conta. "
-                    . "Tente novamente.";
+            .auth-box {
+                width: 100%;
+                max-width: 520px;
             }
         }
-    }
-}
 
-?>
-<!DOCTYPE html>
-<html lang="pt-BR">
+        @media (max-width: 600px) {
+            .auth-wrap {
+                padding: 22px 14px;
+            }
 
-<head>
+            .auth-box {
+                padding: 22px 18px;
+                border-radius: 14px;
+            }
 
-    <meta charset="UTF-8">
+            .auth-title,
+            .auth-subtitle,
+            .auth-icon {
+                text-align: center;
+            }
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+            .field {
+                margin-bottom: 14px;
+            }
 
-    <title>LibrasHub - Cadastro</title>
+            .field label {
+                display: block;
+                margin-bottom: 6px;
+            }
 
-    <link
-        rel="stylesheet"
-        href="../static/css/style.css"
-    >
+            .field input,
+            .field select {
+                min-height: 48px;
+                font-size: 16px;
+            }
 
-</head>
+            .btn.btn-block {
+                min-height: 48px;
+                font-size: 16px;
+            }
 
-<body>
+            .alert {
+                font-size: .9rem;
+            }
+        }
 
+        @media (max-width: 380px) {
+            .auth-wrap {
+                padding: 14px 10px;
+            }
 
-<div class="auth-wrap">
+            .auth-box {
+                padding: 18px 14px;
+                border-radius: 12px;
+            }
 
+            .auth-title {
+                font-size: 1.45rem;
+            }
 
-    <div class="auth-box">
+            .auth-subtitle {
+                font-size: .86rem;
+            }
+        }
 
+        @media (min-width: 1200px) {
+            .auth-box {
+                max-width: 500px;
+            }
+        }
+    </style>
 
-        <div class="auth-icon">
+</head> 
 
-            👤
+<body> 
 
-        </div>
 
+<div class="auth-wrap"> 
 
-        <div class="auth-title">
 
-            Criar Conta
+    <div class="auth-box"> 
 
-        </div>
 
+        <div class="auth-icon"> 
 
-        <div class="auth-subtitle">
+            👤 
 
-            Cadastre-se no LibrasHub
+        </div> 
 
-        </div>
 
+        <div class="auth-title"> 
 
-        <?php if ($erro): ?>
+            Criar Conta 
 
-            <div class="alert alert-error">
+        </div> 
 
-                <span aria-hidden="true">
-                    ⚠
-                </span>
 
-                <span>
+        <div class="auth-subtitle"> 
 
-                    <?= htmlspecialchars(
-                        $erro,
-                        ENT_QUOTES,
-                        "UTF-8"
-                    ) ?>
+            Cadastre-se no LibrasHub 
 
-                </span>
+        </div> 
 
-            </div>
 
-        <?php endif; ?>
+        <?php if ($erro): ?> 
 
+            <div class="alert alert-error"> 
 
-        <?php if ($sucesso): ?>
+                <span aria-hidden="true"> 
+                    ⚠ 
+                </span> 
 
-            <div class="alert alert-success">
+                <span> 
 
-                <span aria-hidden="true">
-                    ✓
-                </span>
+                    <?= htmlspecialchars( 
+                        $erro, 
+                        ENT_QUOTES, 
+                        "UTF-8" 
+                    ) ?> 
 
-                <span>
+                </span> 
 
-                    <?= htmlspecialchars(
-                        $sucesso,
-                        ENT_QUOTES,
-                        "UTF-8"
-                    ) ?>
+            </div> 
 
-                </span>
+        <?php endif; ?> 
 
-            </div>
 
-        <?php endif; ?>
+        <?php if ($sucesso): ?> 
 
+            <div class="alert alert-success"> 
 
-        <form
-            method="POST"
-            action="cadastro.php"
-        >
-
-
-            <div class="field">
-
-                <label for="nome">
-                    Nome Completo
-                </label>
-
-                <input
-                    type="text"
-                    id="nome"
-                    name="nome"
-                    placeholder="Seu nome"
-                    autocomplete="name"
-                    value="<?= htmlspecialchars(
-                        $_POST["nome"]
-                        ?? "",
-                        ENT_QUOTES,
-                        "UTF-8"
-                    ) ?>"
-                    required
-                >
-
-            </div>
-
-
-            <div class="field">
-
-                <label for="email">
-                    Email
-                </label>
-
-                <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    placeholder="seuemail@exemplo.com"
-                    autocomplete="email"
-                    value="<?= htmlspecialchars(
-                        $_POST["email"]
-                        ?? "",
-                        ENT_QUOTES,
-                        "UTF-8"
-                    ) ?>"
-                    required
-                >
-
-            </div>
-
+                <span aria-hidden="true"> 
+                    ✓ 
+                </span> 
 
-            <div class="field">
+                <span> 
 
-                <label for="tipo_usuario">
-                    Tipo de Usuário
-                </label>
+                    <?= htmlspecialchars( 
+                        $sucesso, 
+                        ENT_QUOTES, 
+                        "UTF-8" 
+                    ) ?> 
 
-                <select
-                    name="tipo_usuario"
-                    id="tipo_usuario"
-                    required
-                >
+                </span> 
 
-                    <?php foreach (
-                        $TIPOS_PERMITIDOS
-                        as $tipo
-                    ): ?>
+            </div> 
 
-                        <option
-                            value="<?= htmlspecialchars(
-                                $tipo,
-                                ENT_QUOTES,
-                                "UTF-8"
-                            ) ?>"
-                            <?= (
-                                ($_POST["tipo_usuario"] ?? "Usuário Simples")
-                                ===
-                                $tipo
-                            )
-                                ? "selected"
-                                : ""
-                            ?>
-                        >
+        <?php endif; ?> 
 
-                            <?= htmlspecialchars(
-                                $tipo,
-                                ENT_QUOTES,
-                                "UTF-8"
-                            ) ?>
 
-                        </option>
+        <form 
+            method="POST" 
+            action="cadastro.php" 
+        > 
 
-                    <?php endforeach; ?>
 
-                </select>
+            <div class="field"> 
 
-            </div>
+                <label for="nome"> 
+                    Nome Completo 
+                </label> 
 
+                <input 
+                    type="text" 
+                    id="nome" 
+                    name="nome" 
+                    placeholder="Seu nome" 
+                    autocomplete="name" 
+                    value="<?= htmlspecialchars( 
+                        $_POST["nome"] 
+                        ?? "", 
+                        ENT_QUOTES, 
+                        "UTF-8" 
+                    ) ?>" 
+                    required 
+                > 
 
-            <div class="field">
+            </div> 
 
-                <label for="senha">
-                    Senha
-                </label>
 
-                <input
-                    type="password"
-                    id="senha"
-                    name="senha"
-                    placeholder="••••••••"
-                    autocomplete="new-password"
-                    required
-                    minlength="6"
-                >
+            <div class="field"> 
 
-            </div>
+                <label for="email"> 
+                    Email 
+                </label> 
 
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    placeholder="seuemail@exemplo.com" 
+                    autocomplete="email" 
+                    value="<?= htmlspecialchars( 
+                        $_POST["email"] 
+                        ?? "", 
+                        ENT_QUOTES, 
+                        "UTF-8" 
+                    ) ?>" 
+                    required 
+                > 
 
-            <div class="field">
+            </div> 
 
-                <label for="confirmar_senha">
-                    Confirmar Senha
-                </label>
 
-                <input
-                    type="password"
-                    id="confirmar_senha"
-                    name="confirmar_senha"
-                    placeholder="••••••••"
-                    autocomplete="new-password"
-                    required
-                    minlength="6"
-                >
+            <div class="field"> 
 
-            </div>
+                <label for="tipo_usuario"> 
+                    Tipo de Usuário 
+                </label> 
 
+                <select 
+                    name="tipo_usuario" 
+                    id="tipo_usuario" 
+                    required 
+                > 
 
-            <button
-                type="submit"
-                class="btn btn-block"
-            >
-                Criar Conta
-            </button>
+                    <?php foreach ( 
+                        $TIPOS_PERMITIDOS 
+                        as $tipo 
+                    ): ?> 
 
+                        <option 
+                            value="<?= htmlspecialchars( 
+                                $tipo, 
+                                ENT_QUOTES, 
+                                "UTF-8" 
+                            ) ?>" 
+                            <?= ( 
+                                ($_POST["tipo_usuario"] ?? "Usuário Comum") 
+                                === 
+                                $tipo 
+                            ) 
+                                ? "selected" 
+                                : "" 
+                            ?> 
+                        > 
 
-        </form>
+                            <?= htmlspecialchars( 
+                                $tipo, 
+                                ENT_QUOTES, 
+                                "UTF-8" 
+                            ) ?> 
 
+                        </option> 
 
-        <div class="auth-footer">
+                    <?php endforeach; ?> 
 
-            Já tem uma conta?
+                </select> 
 
-            <a href="login.php">
-                Entrar
-            </a>
+            </div> 
 
-        </div>
 
+            <div class="field"> 
 
-    </div>
+                <label for="senha"> 
+                    Senha 
+                </label> 
 
+                <input 
+                    type="password" 
+                    id="senha" 
+                    name="senha" 
+                    placeholder="••••••••" 
+                    autocomplete="new-password" 
+                    required 
+                    minlength="6" 
+                > 
 
-</div>
+            </div> 
 
 
-</body>
+            <div class="field"> 
+
+                <label for="confirmar_senha"> 
+                    Confirmar Senha 
+                </label> 
+
+                <input 
+                    type="password" 
+                    id="confirmar_senha" 
+                    name="confirmar_senha" 
+                    placeholder="••••••••" 
+                    autocomplete="new-password" 
+                    required 
+                    minlength="6" 
+                > 
+
+            </div> 
+
+
+            <button 
+                type="submit" 
+                class="btn btn-block" 
+            > 
+                Criar Conta 
+            </button> 
+
+
+        </form> 
+
+
+        <div class="auth-footer"> 
+
+            Já tem uma conta? 
+
+            <a href="login.php"> 
+                Entrar 
+            </a> 
+
+        </div> 
+
+
+    </div> 
+
+
+</div> 
+
+
+</body> 
 
 </html>

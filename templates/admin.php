@@ -1,3 +1,6 @@
+
+
+
 <?php
 
 session_start();
@@ -1064,13 +1067,491 @@ $inicial =
 
     </script>
 
+
+
+    <style>
+        /* =========================================================
+           RESPONSIVIDADE LOCAL - ADMIN LIBRASHUB
+           Mantém o layout desktop e transforma a sidebar em menu
+           hambúrguer em tablets/celulares.
+           ========================================================= */
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        img, video, canvas, svg {
+            max-width: 100%;
+        }
+
+        .content {
+            min-width: 0;
+        }
+
+        .admin-tabs {
+            max-width: 100%;
+        }
+
+        .admin-card,
+        .admin-section,
+        .stat-card,
+        .metric-card,
+        .chart-card,
+        .training-log-card,
+        .model-card,
+        .community-card,
+        .gesture-card,
+        .upload-area,
+        .training-progress-card {
+            min-width: 0;
+        }
+
+        .table-wrapper {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .admin-table {
+            width: 100%;
+        }
+
+        .model-file-value,
+        .gesture-meta,
+        .community-card p,
+        .page-subtitle,
+        .section-heading p {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        /* O botão existe no HTML, mas fica escondido no desktop. */
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 1300;
+            width: 46px;
+            height: 46px;
+            border: 0;
+            border-radius: 12px;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.45rem;
+            line-height: 1;
+            background: var(--clr-primary, #241af6);
+            color: #fff;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1150;
+            background: rgba(0, 0, 0, .48);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s ease;
+        }
+
+        /* Notebook / tablet horizontal */
+        @media (max-width: 1200px) {
+            .content {
+                padding-left: 28px;
+                padding-right: 28px;
+            }
+
+            .stat-grid,
+            .metrics-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+
+            .admin-grid,
+            .charts-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+
+            .admin-tabs {
+                overflow-x: auto;
+                flex-wrap: nowrap !important;
+                scrollbar-width: thin;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .admin-tab-btn {
+                flex: 0 0 auto;
+                white-space: nowrap;
+            }
+        }
+
+        /* Tablet e mobile: sidebar vira drawer */
+        @media (max-width: 900px) {
+            body {
+                width: 100%;
+                min-width: 0;
+            }
+
+            body.menu-open {
+                overflow: hidden;
+            }
+
+            .menu-toggle {
+                display: flex;
+            }
+
+            .sidebar {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                bottom: 0 !important;
+                z-index: 1200 !important;
+                width: min(82vw, 300px) !important;
+                max-width: 300px !important;
+                height: 100dvh !important;
+                transform: translateX(-105%) !important;
+                transition: transform .28s ease !important;
+                overflow-y: auto !important;
+                overscroll-behavior: contain;
+                box-shadow: 18px 0 40px rgba(0, 0, 0, .18);
+            }
+
+            .sidebar.open {
+                transform: translateX(0) !important;
+            }
+
+            .sidebar-overlay {
+                display: block;
+            }
+
+            .sidebar-overlay.open {
+                opacity: 1;
+                pointer-events: auto;
+            }
+
+            .content {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                margin-left: 0 !important;
+                padding: 84px 22px 36px !important;
+            }
+
+            .admin-header {
+                padding-left: 52px;
+                min-width: 0;
+            }
+
+            .admin-grid,
+            .charts-grid {
+                grid-template-columns: 1fr !important;
+            }
+
+            .section-heading,
+            .section-header,
+            .training-log-header,
+            .chart-card-header,
+            .model-head,
+            .community-card-header,
+            .preview-header {
+                gap: 14px;
+                flex-wrap: wrap;
+            }
+
+            .training-actions,
+            .acoes-upload,
+            .user-type-form {
+                flex-wrap: wrap;
+            }
+
+            .training-actions > *,
+            .acoes-upload > * {
+                max-width: 100%;
+            }
+
+            .chart-wrapper {
+                width: 100%;
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .chart-wrapper canvas {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
+            .training-log {
+                width: 100%;
+                max-width: 100%;
+            }
+        }
+
+        /* Celular */
+        @media (max-width: 640px) {
+            .menu-toggle {
+                top: 12px;
+                left: 12px;
+                width: 44px;
+                height: 44px;
+                border-radius: 11px;
+            }
+
+            .content {
+                padding: 76px 14px 28px !important;
+            }
+
+            .admin-header {
+                padding-left: 50px;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .avatar-md {
+                flex: 0 0 auto;
+            }
+
+            .page-title {
+                font-size: clamp(1.35rem, 7vw, 1.8rem) !important;
+                line-height: 1.15;
+            }
+
+            .page-subtitle {
+                font-size: .86rem;
+            }
+
+            .admin-tabs {
+                margin-left: -14px;
+                margin-right: -14px;
+                padding-left: 14px;
+                padding-right: 14px;
+                gap: 8px;
+            }
+
+            .admin-tab-btn {
+                min-height: 42px;
+                padding: 10px 13px !important;
+                font-size: .82rem !important;
+            }
+
+            .stat-grid,
+            .metrics-grid,
+            .status-grid,
+            .model-files {
+                grid-template-columns: 1fr !important;
+            }
+
+            .stat-card,
+            .metric-card,
+            .admin-card,
+            .admin-section,
+            .chart-card,
+            .training-log-card,
+            .model-card,
+            .community-card {
+                padding-left: 16px !important;
+                padding-right: 16px !important;
+            }
+
+            .section-heading,
+            .section-header,
+            .training-log-header,
+            .chart-card-header,
+            .model-head,
+            .community-card-header,
+            .preview-header {
+                flex-direction: column !important;
+                align-items: stretch !important;
+            }
+
+            .training-actions,
+            .acoes-upload {
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                width: 100%;
+                gap: 10px;
+            }
+
+            .training-actions button,
+            .acoes-upload button,
+            .btn-training,
+            .btn-secondary,
+            .btn-danger-outline,
+            .btn-primary {
+                max-width: 100%;
+            }
+
+            .training-actions > button,
+            .acoes-upload > button {
+                width: 100%;
+            }
+
+            .search-box,
+            .search-box input,
+            .dataset-input,
+            .select-cargo {
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .user-type-form {
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                gap: 8px;
+                width: 100%;
+            }
+
+            .btn-salvar-cargo {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .gesture-card {
+                display: grid !important;
+                grid-template-columns: auto minmax(0, 1fr) !important;
+                gap: 12px !important;
+                align-items: start !important;
+            }
+
+            .gesture-card > form {
+                grid-column: 1 / -1;
+                justify-self: end;
+            }
+
+            .community-card-header .count-badge {
+                align-self: flex-start;
+            }
+
+            .chart-legend {
+                flex-wrap: wrap;
+            }
+
+            .chart-wrapper {
+                min-height: 220px;
+            }
+
+            /* A tabela de usuários vira cartões legíveis no celular. */
+            .table-wrapper {
+                overflow: visible;
+            }
+
+            .admin-table,
+            .admin-table tbody,
+            .admin-table tr,
+            .admin-table td {
+                display: block;
+                width: 100%;
+            }
+
+            .admin-table thead {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                white-space: nowrap;
+                border: 0;
+            }
+
+            .admin-table tbody {
+                display: grid;
+                gap: 12px;
+            }
+
+            .admin-table tr {
+                padding: 14px;
+                border: 1px solid var(--clr-border, rgba(127, 127, 127, .22));
+                border-radius: 14px;
+                background: var(--clr-card, transparent);
+            }
+
+            .admin-table td {
+                display: grid;
+                grid-template-columns: minmax(88px, 34%) minmax(0, 1fr);
+                gap: 10px;
+                align-items: start;
+                padding: 9px 0 !important;
+                border: 0 !important;
+                overflow-wrap: anywhere;
+            }
+
+            .admin-table td::before {
+                font-weight: 700;
+                opacity: .72;
+                font-size: .78rem;
+            }
+
+            .admin-table td:nth-child(1)::before { content: "Nome"; }
+            .admin-table td:nth-child(2)::before { content: "Email"; }
+            .admin-table td:nth-child(3)::before { content: "Cargo"; }
+            .admin-table td:nth-child(4)::before { content: "Desde"; }
+            .admin-table td:nth-child(5)::before { content: "Ações"; }
+
+            .admin-table td form,
+            .admin-table td select,
+            .admin-table td button {
+                max-width: 100%;
+            }
+
+            .upload-area {
+                padding-left: 14px !important;
+                padding-right: 14px !important;
+            }
+
+            .lista-arquivos {
+                min-width: 0;
+            }
+        }
+
+        /* Celulares muito estreitos */
+        @media (max-width: 420px) {
+            .sidebar {
+                width: min(88vw, 290px) !important;
+            }
+
+            .content {
+                padding-left: 10px !important;
+                padding-right: 10px !important;
+            }
+
+            .admin-tabs {
+                margin-left: -10px;
+                margin-right: -10px;
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+
+            .admin-table td {
+                grid-template-columns: 1fr;
+                gap: 4px;
+            }
+
+            .admin-table td::before {
+                margin-bottom: 2px;
+            }
+
+            .page-title {
+                font-size: 1.3rem !important;
+            }
+        }
+    </style>
+
 </head>
 
 
 <body>
 
 
-    <aside class="sidebar">
+    <aside class="sidebar" id="menuLateral">
 
 
         <div class="sidebar-top">
@@ -5851,7 +6332,7 @@ $inicial =
 
 
 
-    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">
+    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu" aria-controls="menuLateral" aria-expanded="false">
 
         &#9776;
 
@@ -5910,6 +6391,15 @@ $inicial =
 
                 botao.innerHTML =
                     "&#10005;";
+
+                botao.setAttribute(
+                    "aria-expanded",
+                    "true"
+                );
+
+                document.body.classList.add(
+                    "menu-open"
+                );
             }
 
 
@@ -5927,6 +6417,15 @@ $inicial =
 
                 botao.innerHTML =
                     "&#9776;";
+
+                botao.setAttribute(
+                    "aria-expanded",
+                    "false"
+                );
+
+                document.body.classList.remove(
+                    "menu-open"
+                );
             }
 
 
@@ -5946,6 +6445,26 @@ $inicial =
             overlay.addEventListener(
                 "click",
                 fechar
+            );
+
+
+            document.addEventListener(
+                "keydown",
+                evento => {
+                    if (evento.key === "Escape") {
+                        fechar();
+                    }
+                }
+            );
+
+
+            window.addEventListener(
+                "resize",
+                () => {
+                    if (window.innerWidth > 900) {
+                        fechar();
+                    }
+                }
             );
 
 

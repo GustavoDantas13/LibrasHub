@@ -440,22 +440,225 @@ if (
     line-height:1.5;
 }
 
+/* ===== RESPONSIVIDADE / MENU MOBILE ===== */
+
+*{
+    box-sizing:border-box;
+}
+
+html,
+body{
+    max-width:100%;
+    overflow-x:hidden;
+}
+
+.sidebar{
+    z-index:1200;
+    transition:transform .28s ease, box-shadow .28s ease;
+}
+
+.content{
+    min-width:0;
+}
+
+.ajuda-grid > *,
+.panel,
+.tips-box,
+.field{
+    min-width:0;
+}
+
+.field input,
+.field textarea,
+.field select{
+    width:100%;
+    max-width:100%;
+}
+
+.faq-q{
+    min-width:0;
+}
+
+.faq-q > :first-child,
+.faq-a,
+.contact-note{
+    overflow-wrap:anywhere;
+    word-break:normal;
+}
+
+.menu-toggle{
+    display:none;
+    position:fixed;
+    top:16px;
+    left:16px;
+    width:46px;
+    height:46px;
+    border:1px solid var(--border);
+    border-radius:12px;
+    background:var(--surface);
+    color:var(--text);
+    align-items:center;
+    justify-content:center;
+    font-size:1.45rem;
+    line-height:1;
+    cursor:pointer;
+    z-index:1300;
+    box-shadow:0 8px 24px rgba(0,0,0,.14);
+}
+
+.sidebar-overlay{
+    display:none;
+}
+
+@media(max-width:1100px){
+    .content{
+        padding:32px;
+    }
+
+    .ajuda-grid{
+        grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);
+        gap:18px;
+    }
+}
+
 @media(max-width:900px){
+    body{
+        min-width:0;
+    }
+
+    .sidebar{
+        width:min(82vw,300px);
+        max-width:300px;
+        transform:translateX(-105%);
+        box-shadow:none;
+    }
+
+    .sidebar.open{
+        transform:translateX(0);
+        box-shadow:18px 0 44px rgba(0,0,0,.24);
+    }
+
+    .menu-toggle{
+        display:flex;
+    }
+
+    .sidebar-overlay{
+        display:block;
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,.48);
+        opacity:0;
+        visibility:hidden;
+        pointer-events:none;
+        transition:opacity .25s ease, visibility .25s ease;
+        z-index:1100;
+    }
+
+    .sidebar-overlay.open{
+        opacity:1;
+        visibility:visible;
+        pointer-events:auto;
+    }
+
+    body.menu-open{
+        overflow:hidden;
+    }
 
     .content{
+        width:100%;
         margin-left:0;
-        padding:20px;
+        padding:78px 24px 28px;
     }
 
     .ajuda-grid{
         grid-template-columns:1fr;
+        gap:18px;
+    }
+
+    .panel,
+    .tips-box{
+        width:100%;
+        max-width:100%;
     }
 }
 
 @media(max-width:600px){
-
     .content{
+        padding:72px 16px 24px;
+    }
+
+    .page-title{
+        line-height:1.15;
+    }
+
+    .page-subtitle{
+        line-height:1.5;
+        margin-bottom:20px;
+    }
+
+    .ajuda-grid{
+        gap:14px;
+    }
+
+    .panel,
+    .tips-box{
         padding:16px;
+        border-radius:12px;
+    }
+
+    .faq-q{
+        padding:15px 0;
+        align-items:flex-start;
+        font-size:.9rem;
+        line-height:1.45;
+    }
+
+    .faq-q span{
+        flex:0 0 auto;
+        margin-top:1px;
+    }
+
+    .faq-a{
+        font-size:.84rem;
+        line-height:1.6;
+    }
+
+    .tips-box ul{
+        padding-left:20px;
+        line-height:1.7;
+    }
+
+    .field input,
+    .field textarea{
+        font-size:16px; /* evita zoom automático no iOS */
+    }
+
+    .btn.btn-block{
+        width:100%;
+        min-height:46px;
+    }
+}
+
+@media(max-width:420px){
+    .content{
+        padding-left:12px;
+        padding-right:12px;
+    }
+
+    .menu-toggle{
+        top:12px;
+        left:12px;
+        width:44px;
+        height:44px;
+    }
+
+    .sidebar{
+        width:min(88vw,290px);
+    }
+
+    .panel,
+    .tips-box{
+        padding:14px;
     }
 }
 
@@ -466,7 +669,7 @@ if (
 <body>
 
 
-<aside class="sidebar">
+<aside class="sidebar" id="mobileSidebar">
 
     <div class="sidebar-top">
 
@@ -1009,6 +1212,8 @@ function toggleFaq(
     class="menu-toggle"
     id="menuToggle"
     aria-label="Abrir menu"
+    aria-expanded="false"
+    aria-controls="mobileSidebar"
 >
     &#9776;
 </button>
@@ -1061,6 +1266,20 @@ function toggleFaq(
 
         btn.innerHTML =
             "&#10005;";
+
+        btn.setAttribute(
+            "aria-expanded",
+            "true"
+        );
+
+        btn.setAttribute(
+            "aria-label",
+            "Fechar menu"
+        );
+
+        document.body.classList.add(
+            "menu-open"
+        );
     }
 
     function close(){
@@ -1075,6 +1294,20 @@ function toggleFaq(
 
         btn.innerHTML =
             "&#9776;";
+
+        btn.setAttribute(
+            "aria-expanded",
+            "false"
+        );
+
+        btn.setAttribute(
+            "aria-label",
+            "Abrir menu"
+        );
+
+        document.body.classList.remove(
+            "menu-open"
+        );
     }
 
     btn.addEventListener(
@@ -1107,6 +1340,35 @@ function toggleFaq(
                 );
             }
         );
+
+    document.addEventListener(
+        "keydown",
+        function(event){
+
+            if(
+                event.key === "Escape"
+                &&
+                sidebar.classList.contains("open")
+            ){
+                close();
+                btn.focus();
+            }
+        }
+    );
+
+    window.addEventListener(
+        "resize",
+        function(){
+
+            if(
+                window.innerWidth > 900
+                &&
+                sidebar.classList.contains("open")
+            ){
+                close();
+            }
+        }
+    );
 
 })();
 

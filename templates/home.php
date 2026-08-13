@@ -78,20 +78,60 @@ $ehAdmin =
 
 <style>
 /* ── BASE ────────────────────────────────────────────── */
-html, body { height: auto; overflow-y: auto; }
-body { display: block; }
+*, *::before, *::after { box-sizing: border-box; }
+html, body {
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+body { display: block; margin: 0; }
+
+/* Todas as imagens respeitam o espaço disponível */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+.logo-img {
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+/* Evita que grids/flex criem rolagem horizontal por conteúdo grande */
+.hero > *,
+.tool-block > *,
+.comm-grid > *,
+.content { min-width: 0; }
 
 /* ── SIDEBAR ─────────────────────────────────────────── */
 .sidebar {
   position: fixed;
-  top: 0; left: 0;
+  top: 0;
+  left: 0;
   width: 260px;
-  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 1100;
+  transition: transform .25s ease;
 }
 .content {
   margin-left: 260px;
-  flex: 1;
+  width: calc(100% - 260px);
+  min-height: 100vh;
+}
+
+/* Botão/overlay do menu mobile ficam escondidos no desktop */
+.menu-toggle,
+.sidebar-overlay { display: none; }
+
+/* Links da navegação nunca estouram a largura */
+.sidebar .nav-item {
+  width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* ── HERO ────────────────────────────────────────────── */
@@ -564,45 +604,205 @@ body { display: block; }
 
 
 /* ── RESPONSIVIDADE ──────────────────────────────────── */
-@media (max-width: 768px) {
-  .content { margin-left: 0 !important; }
+
+/* Desktop/tablet grande: paddings fluidos */
+.hero,
+.section,
+.comm-inner,
+.stats-inner {
+  width: 100%;
+}
+
+.hero {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  padding-left: clamp(28px, 5vw, 72px);
+  padding-right: clamp(28px, 5vw, 72px);
+}
+.section,
+.comm-inner {
+  padding-left: clamp(28px, 5vw, 72px);
+  padding-right: clamp(28px, 5vw, 72px);
+}
+.stats-inner {
+  padding-left: clamp(24px, 5vw, 72px);
+  padding-right: clamp(24px, 5vw, 72px);
+}
+.hero h1 { font-size: clamp(2rem, 4vw, 2.8rem); }
+
+/* Tablet e celular: sidebar vira menu lateral recolhível */
+@media (max-width: 900px) {
+  .content {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .sidebar {
+    width: min(82vw, 300px);
+    transform: translateX(-105%);
+    box-shadow: 8px 0 30px rgba(0, 0, 0, .22);
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  .menu-toggle {
+    display: flex;
+    position: fixed;
+    top: max(14px, env(safe-area-inset-top));
+    left: max(14px, env(safe-area-inset-left));
+    z-index: 1200;
+    width: 46px;
+    height: 46px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    font-size: 1.35rem;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .14);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1090;
+    background: rgba(0, 0, 0, .48);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .25s ease, visibility .25s ease;
+  }
+  .sidebar-overlay.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
 
   .hero {
     grid-template-columns: 1fr !important;
-    padding: 80px 24px 48px !important;
-    gap: 36px;
+    padding: 88px 28px 54px !important;
+    gap: 38px;
   }
-  .hero h1 { font-size: 1.9rem; }
-  .hero-visual { height: 220px; }
+  .hero-desc { max-width: 650px; }
+  .hero-visual {
+    width: 100%;
+    height: auto;
+    min-height: 260px;
+    aspect-ratio: 16 / 9;
+  }
 
-  .section { padding: 56px 24px; }
-  .tool-block { grid-template-columns: 1fr !important; direction: ltr !important; gap: 28px; margin-bottom: 56px; }
-  .tool-block.flip { direction: ltr !important; }
+  .tool-block,
+  .comm-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .tool-block,
+  .tool-block.flip {
+    direction: ltr !important;
+    gap: 30px;
+  }
+  .tool-visual {
+    width: 100%;
+    height: auto;
+    min-height: 240px;
+  }
 
-  .stats-inner { grid-template-columns: 1fr; padding: 28px 24px; gap: 0; }
-  .stat-item { border-bottom: 1px solid var(--border); padding: 20px 0; }
+  .tips-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Celulares */
+@media (max-width: 600px) {
+  .hero {
+    padding: 82px 18px 42px !important;
+    gap: 28px;
+  }
+  .hero h1 {
+    font-size: clamp(1.65rem, 8vw, 2rem);
+    line-height: 1.16;
+  }
+  .hero h1 br { display: none; }
+  .hero-desc {
+    font-size: .9rem;
+    margin-bottom: 28px;
+  }
+  .hero-visual {
+    min-height: 210px;
+    border-radius: 18px;
+  }
+  .hero-visual-icon { font-size: 3.6rem; }
+
+  .section,
+  .comm-inner {
+    padding: 48px 18px;
+  }
+  .section-desc { margin-bottom: 36px; }
+
+  .stats-inner {
+    grid-template-columns: 1fr;
+    padding: 24px 18px;
+    gap: 0;
+  }
+  .stat-item {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+  }
   .stat-item:last-child { border-bottom: none; }
 
-  .comm-inner { padding: 56px 24px; }
-  .comm-grid { grid-template-columns: 1fr !important; gap: 36px; }
+  .tool-block { margin-bottom: 48px; }
+  .tool-visual { min-height: 200px; }
 
-  .tips-grid { grid-template-columns: 1fr 1fr !important; }
+  .comm-grid { gap: 32px; }
+  .lock-card { padding: 28px 20px; }
+  .comm-feat { gap: 12px; }
 
-  .hw-footer { padding: 28px 24px; flex-direction: column; text-align: center; }
-  .footer-links { justify-content: center; }
-}
-@media (max-width: 480px) {
-  .hero h1 { font-size: 1.55rem; }
   .tips-grid { grid-template-columns: 1fr !important; }
-  .hero-cta { flex-direction: column; }
-  .btn-cta { justify-content: center; }
+
+  .hero-cta {
+    flex-direction: column;
+    width: 100%;
+  }
+  .btn-cta,
+  .btn-tool {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .hw-footer {
+    padding: 28px 18px;
+    flex-direction: column;
+    text-align: center;
+  }
+  .footer-links {
+    justify-content: center;
+    gap: 14px 20px;
+  }
+}
+
+/* Celulares bem estreitos */
+@media (max-width: 380px) {
+  .sidebar { width: 88vw; }
+  .hero,
+  .section,
+  .comm-inner,
+  .stats-inner { padding-left: 14px !important; padding-right: 14px !important; }
+  .hero-visual-badge { top: 10px; right: 10px; }
+  .comm-ico { width: 40px; height: 40px; }
+}
+
+/* Acessibilidade: reduz animações quando o sistema solicitar */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebar-overlay,
+  .hero-visual-glow,
+  .hero-visual-icon { transition: none !important; animation: none !important; }
 }
 </style>
 </head>
 <body>
 
 <!-- ══ SIDEBAR ══════════════════════════════════════════ -->
-<aside class="sidebar">
+<aside class="sidebar" id="sidebarNav">
   <div class="sidebar-top">
     <div class="logo">
       <img src="../static/images/librashub-logo.png" alt="LibrasHub" class="logo-img">
@@ -880,7 +1080,7 @@ body { display: block; }
 </div><!-- /.content -->
 
 <!-- ── MENU MOBILE ───────────────────────────────────── -->
-<button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">&#9776;</button>
+<button class="menu-toggle" id="menuToggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebarNav">&#9776;</button>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <script>
@@ -890,11 +1090,25 @@ body { display: block; }
   var sidebar = document.querySelector('.sidebar');
   var overlay = document.getElementById('sidebarOverlay');
   if(!btn || !sidebar) return;
-  function openMenu(){ sidebar.classList.add('open'); overlay.classList.add('open'); btn.innerHTML='&#10005;'; }
-  function closeMenu(){ sidebar.classList.remove('open'); overlay.classList.remove('open'); btn.innerHTML='&#9776;'; }
+  function openMenu(){
+    sidebar.classList.add('open');
+    overlay.classList.add('open');
+    btn.innerHTML='&#10005;';
+    btn.setAttribute('aria-expanded', 'true');
+    btn.setAttribute('aria-label', 'Fechar menu');
+  }
+  function closeMenu(){
+    sidebar.classList.remove('open');
+    overlay.classList.remove('open');
+    btn.innerHTML='&#9776;';
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-label', 'Abrir menu');
+  }
   btn.addEventListener('click', function(){ sidebar.classList.contains('open') ? closeMenu() : openMenu(); });
   overlay.addEventListener('click', closeMenu);
   sidebar.querySelectorAll('a').forEach(function(a){ a.addEventListener('click', closeMenu); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeMenu(); });
+  window.addEventListener('resize', function(){ if(window.innerWidth > 900) closeMenu(); });
 })();
 
 /* ── nav ativo ── */
@@ -911,3 +1125,6 @@ body { display: block; }
 
 </body>
 </html>
+0.1
+
+

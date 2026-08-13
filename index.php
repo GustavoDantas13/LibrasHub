@@ -9,7 +9,7 @@ if (!empty($_SESSION["usuario_id"])) {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>LibrasHub – Tecnologia, Libras e Comunidade</title>
     <link rel="icon" type="image/png" href="static/images/librashub-logo.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -89,6 +89,11 @@ if (!empty($_SESSION["usuario_id"])) {
             color: var(--clr-text);
             overflow-x: hidden;
             transition: background .3s, color .3s;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
         }
 
         /*======== TESTE COISO DOS ICONES =======*/
@@ -219,27 +224,32 @@ if (!empty($_SESSION["usuario_id"])) {
             border-radius: 4px;
         }
 
-        /* Logo decorativo fixo à esquerda (wallpaper) */
+        /* ===== LOGO GRANDE DO HERO =====
+           A logo ocupa uma coluna própria à esquerda.
+           Ela NÃO fica sobre/atrás do texto. */
         .hero-logo-fixed {
-            position:absolute;
-            left: 0;
-            margin-top: 25%;
-            transform: translateY(-50%);
-            width: 25vw;
-            height: 25vw;
-            z-index: 0;
+            position: relative;
+            width: 100%;
+            max-width: 330px;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             pointer-events: none;
             user-select: none;
+            justify-self: start;
         }
 
         .hero-logo-fixed img {
-            width: 100%;
+            display: block;
+            width: 900vw;
             height: 100%;
             object-fit: contain;
-        }
 
-        @media (max-width: 600px) {
-            .hero-logo-fixed { width: 28vw; height: 28vw; opacity: 0.12; }
+            /* Move SOMENTE a imagem para a esquerda.
+               Como usamos transform, o espaço da coluna não muda e
+               nenhum texto, botão ou outro elemento é deslocado. */
+            transform: translateX(-85px);
         }
 
         .nav-links {
@@ -262,7 +272,6 @@ if (!empty($_SESSION["usuario_id"])) {
             background: none;
             font-family: inherit;
             transition: opacity .2s, background .2s;
-            left: 35px;
         }
 
         .nav-link:hover,
@@ -425,11 +434,19 @@ if (!empty($_SESSION["usuario_id"])) {
 
         .mobile-menu {
             display: none;
+            position: fixed;
+            top: var(--nav-h);
+            left: 0;
+            right: 0;
+            z-index: 99;
             flex-direction: column;
             background: var(--clr-navbar-bg);
             border-top: 1px solid rgba(255, 255, 255, .1);
             padding: 16px 24px 24px;
             gap: 8px;
+            max-height: calc(100vh - var(--nav-h));
+            overflow-y: auto;
+            box-shadow: 0 14px 30px rgba(0, 0, 0, .28);
         }
 
         .mobile-menu.open {
@@ -442,6 +459,18 @@ if (!empty($_SESSION["usuario_id"])) {
             font-size: .95rem;
             padding: 10px 0;
             border-bottom: 1px solid rgba(255, 255, 255, .07);
+        }
+
+        .mobile-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .section-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 48px;
         }
 
         /* ===== SEÇÕES ===== */
@@ -491,9 +520,23 @@ if (!empty($_SESSION["usuario_id"])) {
         /* ===== HERO ===== */
 
         #inicio {
+            position: relative;
             text-align: center;
             padding-top: calc(var(--nav-h) + 100px);
-            padding-left: 20vh;
+            padding-left: 48px;
+            padding-right: 48px;
+            min-height: 545px;
+
+            display: grid;
+            grid-template-columns: minmax(220px, 330px) minmax(0, 1fr);
+            align-items: center;
+            gap: clamp(28px, 4vw, 64px);
+        }
+
+        .hero-content {
+            min-width: 0;
+            width: 100%;
+            text-align: center;
         }
 
         .hero-tag {
@@ -1158,38 +1201,578 @@ if (!empty($_SESSION["usuario_id"])) {
 
         /* ===== RESPONSIVO ===== */
 
+        @media (max-width: 1100px) {
+            .navbar {
+                padding-inline: 24px;
+            }
+
+            #inicio {
+                grid-template-columns: minmax(190px, 270px) minmax(0, 1fr);
+                gap: 30px;
+                padding-left: 34px;
+                padding-right: 34px;
+            }
+
+            .hero-logo-fixed {
+                max-width: 270px;
+            }
+
+            .hero-logo-fixed img {
+                transform: translateX(-55px);
+            }
+        }
+
         @media (max-width: 960px) {
             .steps            { grid-template-columns: 1fr 1fr; }
             .tools-grid       { grid-template-columns: 1fr; }
             .libras-intro     { grid-template-columns: 1fr; }
             .sobre-grid       { grid-template-columns: 1fr; }
             .footer-grid      { grid-template-columns: 1fr 1fr; }
-            .navbar           { padding: 0 20px; }
-            .nav-links        { display: none; }
-            .hamburger        { display: block; }
+
+            .navbar {
+                padding: 0 20px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .hamburger {
+                display: block;
+            }
+
+            #inicio {
+                grid-template-columns: minmax(160px, 210px) minmax(0, 1fr);
+                gap: 22px;
+                padding-left: 24px;
+                padding-right: 24px;
+            }
+
+            .hero-logo-fixed {
+                max-width: 210px;
+            }
+
+            .hero-logo-fixed img {
+                transform: translateX(-28px);
+            }
+
+            #inicio h1 {
+                font-size: clamp(2.15rem, 4.8vw, 2.65rem);
+            }
         }
 
-        @media (max-width: 600px) {
+        /* Em telas pequenas a logo decorativa desaparece para não
+           cobrir, encolher ou deslocar o conteúdo principal. */
+        @media (max-width: 740px) {
+            .hero-logo-fixed {
+                display: none;
+            }
+
+            #inicio {
+                min-height: auto;
+                display: block;
+                padding-left: 24px;
+                padding-right: 24px;
+                padding-top: calc(var(--nav-h) + 72px);
+            }
+
+            .hero-content {
+                width: 100%;
+            }
+
+            .nav-actions {
+                display: none;
+            }
+
+            .navbar {
+                padding-inline: 16px;
+            }
+
+            .mobile-menu {
+                padding-inline: 18px;
+            }
+
+            .section-inner {
+                padding-inline: 24px;
+            }
+
+            .libras-wrap,
+            .sobre-wrap {
+                padding: 46px 30px;
+                border-radius: 22px;
+            }
+        }
+
+        @media (max-width: 500px) {
             .steps                              { grid-template-columns: 1fr; }
             .sinais-grid                        { grid-template-columns: repeat(2, 1fr); }
             .fatos-grid, .valores-grid,
             .stats-grid                         { grid-template-columns: 1fr; }
             .footer-grid                        { grid-template-columns: 1fr; }
-            .section                            { padding: 72px 24px 60px; }
-            #inicio h1                          { font-size: 2.1rem; }
-            .sec-h                              { font-size: 1.5rem; }
-            .cta-final                          { padding: 52px 24px; }
-            .a11y-bar                           { bottom: 14px; right: 14px; }
+
+            .section {
+                padding: 72px 24px 60px;
+            }
+
+            #inicio {
+                padding-top: calc(var(--nav-h) + 54px);
+                padding-bottom: 42px !important;
+            }
+
+            #inicio h1 {
+                font-size: clamp(1.85rem, 9vw, 2.1rem);
+            }
+
+            #inicio h1 br {
+                display: none;
+            }
+
+            #inicio .lead {
+                font-size: .95rem;
+                margin-bottom: 30px;
+            }
+
+            .hero-tag {
+                font-size: .66rem;
+                line-height: 1.35;
+                padding: 6px 12px;
+            }
+
+            .hero-cta {
+                flex-direction: column;
+                align-items: stretch;
+                margin-bottom: 0;
+            }
+
+            .hero-cta .btn {
+                width: 100%;
+            }
+
+            .sec-h {
+                font-size: 1.5rem;
+            }
+
+            .cta-final {
+                padding: 52px 24px;
+                border-radius: 20px;
+            }
+
+            .cta-row {
+                flex-direction: column;
+            }
+
+            .cta-row .btn {
+                width: 100%;
+            }
+
+            .a11y-bar {
+                bottom: 14px;
+                right: 14px;
+            }
+
+            .band {
+                padding: 14px 20px;
+                gap: 14px 22px;
+            }
+
+            .band-item {
+                justify-content: center;
+            }
+
+            .section-inner {
+                padding-inline: 24px;
+            }
+
+            .tool-card {
+                padding: 26px 22px;
+            }
+
+            .libras-wrap,
+            .sobre-wrap {
+                padding: 36px 22px;
+                border-radius: 18px;
+            }
+
+            footer {
+                padding-left: 24px;
+                padding-right: 24px;
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .footer-bottom span {
+                margin-right: 0 !important;
+            }
         }
+
+        @media (max-width: 420px) {
+            .mobile-actions {
+                flex-direction: column;
+            }
+
+            .navbar {
+                padding-inline: 12px;
+            }
+
+            .nav-logo {
+                gap: 7px;
+                font-size: 1rem;
+            }
+
+            .logo-img {
+                width: 26px;
+                height: 26px;
+            }
+
+            .hamburger {
+                font-size: 1.3rem;
+            }
+
+            .section,
+            #inicio,
+            .section-inner {
+                padding-left: 18px;
+                padding-right: 18px;
+            }
+
+            .sinais-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .a11y-panel {
+                width: min(230px, calc(100vw - 28px));
+            }
+        }
+
+/* ===== AJUSTES FINAIS DE RESPONSIVIDADE MOBILE ===== */
+html,
+body{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+}
+
+body{
+    min-height:100vh;
+    min-height:100dvh;
+}
+
+.navbar,
+.mobile-menu,
+.section,
+.section-inner,
+.band,
+footer{
+    max-width:100%;
+}
+
+@media (max-width: 960px){
+
+    .nav-actions{
+        display:none;
+    }
+
+    .hamburger{
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        width:44px;
+        height:44px;
+        flex-shrink:0;
+        border-radius:10px;
+    }
+
+    .mobile-menu{
+        width:100%;
+        max-height:calc(100dvh - var(--nav-h));
+        overscroll-behavior:contain;
+        -webkit-overflow-scrolling:touch;
+    }
+}
+
+@media (max-width: 760px){
+
+    .navbar{
+        padding-inline:14px;
+    }
+
+    .nav-logo{
+        min-width:0;
+    }
+
+    .logo{
+        white-space:nowrap;
+    }
+
+    #inicio{
+        width:100%;
+        padding-left:20px;
+        padding-right:20px;
+    }
+
+    .hero-content{
+        max-width:100%;
+    }
+
+    #inicio h1,
+    #inicio .lead,
+    .sec-h,
+    .sec-p,
+    .tool-card p,
+    .libras-text p,
+    .sobre-text p,
+    .cta-final p{
+        overflow-wrap:anywhere;
+    }
+
+    .section,
+    .section-inner{
+        width:100%;
+    }
+
+    .tools-grid,
+    .steps,
+    .libras-intro,
+    .sobre-grid,
+    .footer-grid{
+        min-width:0;
+    }
+
+    .tool-card,
+    .step,
+    .libras-wrap,
+    .sobre-wrap,
+    .cta-final{
+        width:100%;
+        min-width:0;
+    }
+
+    .mobile-actions .btn{
+        min-height:46px;
+    }
+
+    .mobile-link{
+        min-height:44px;
+        display:flex;
+        align-items:center;
+    }
+}
+
+@media (max-width: 600px){
+
+    .section{
+        padding-left:18px;
+        padding-right:18px;
+    }
+
+    .section-inner{
+        padding-left:18px;
+        padding-right:18px;
+    }
+
+    #inicio{
+        padding-left:18px;
+        padding-right:18px;
+        padding-top:calc(var(--nav-h) + 42px);
+    }
+
+    #inicio h1{
+        font-size:clamp(1.75rem, 8.5vw, 2.05rem);
+        line-height:1.15;
+    }
+
+    #inicio .lead{
+        font-size:.92rem;
+        line-height:1.6;
+    }
+
+    .hero-tag{
+        max-width:100%;
+        white-space:normal;
+    }
+
+    .hero-cta{
+        width:100%;
+    }
+
+    .hero-cta .btn,
+    .cta-row .btn{
+        min-height:48px;
+    }
+
+    .band{
+        display:grid;
+        grid-template-columns:1fr;
+        padding:16px 18px;
+        gap:10px;
+    }
+
+    .band-item{
+        justify-content:flex-start;
+        width:100%;
+    }
+
+    .tool-card{
+        padding:22px 18px;
+    }
+
+    .libras-wrap,
+    .sobre-wrap{
+        padding:30px 18px;
+    }
+
+    .libras-text h2,
+    .sobre-text h2{
+        font-size:1.45rem;
+    }
+
+    .fatos-grid,
+    .valores-grid,
+    .stats-grid{
+        grid-template-columns:1fr;
+    }
+
+    .fato,
+    .valor,
+    .stat{
+        min-width:0;
+    }
+
+    .cta-final{
+        padding:42px 18px;
+    }
+
+    .cta-final h2{
+        font-size:1.55rem;
+    }
+
+    footer{
+        padding:42px 18px 28px;
+    }
+
+    .footer-grid{
+        gap:26px;
+    }
+
+    .footer-brand p{
+        max-width:none;
+    }
+
+    .a11y-bar{
+        right:12px;
+        bottom:12px;
+    }
+
+    .a11y-fab{
+        width:48px;
+        height:48px;
+    }
+
+    .a11y-panel{
+        width:min(280px, calc(100vw - 24px));
+        max-height:70dvh;
+        overflow-y:auto;
+    }
+}
+
+@media (max-width: 420px){
+
+    :root{
+        --nav-h:60px;
+    }
+
+    .navbar{
+        height:var(--nav-h);
+        padding-inline:10px;
+    }
+
+    .nav-logo{
+        gap:6px;
+        font-size:.95rem;
+    }
+
+    .logo-img{
+        width:25px;
+        height:25px;
+    }
+
+    .hamburger{
+        width:42px;
+        height:42px;
+        font-size:1.2rem;
+    }
+
+    .mobile-menu{
+        padding:12px 14px 18px;
+    }
+
+    .mobile-actions{
+        flex-direction:column;
+    }
+
+    .section,
+    #inicio,
+    .section-inner{
+        padding-left:14px;
+        padding-right:14px;
+    }
+
+    #inicio h1{
+        font-size:clamp(1.65rem, 9vw, 1.9rem);
+    }
+
+    .sec-h{
+        font-size:1.35rem;
+    }
+
+    .sec-p{
+        font-size:.88rem;
+        margin-bottom:34px;
+    }
+
+    .step{
+        padding:22px 16px;
+    }
+
+    .tool-card{
+        padding:20px 16px;
+    }
+
+    .libras-wrap,
+    .sobre-wrap{
+        padding:26px 16px;
+        border-radius:16px;
+    }
+
+    .cta-final{
+        padding:36px 16px;
+        border-radius:16px;
+    }
+
+    .cta-final h2{
+        font-size:1.4rem;
+    }
+
+    footer{
+        padding-left:16px;
+        padding-right:16px;
+    }
+
+    .footer-bottom{
+        align-items:flex-start;
+    }
+
+    .a11y-panel{
+        width:calc(100vw - 24px);
+    }
+}
+
     </style>
 </head>
 <body>
-
-<!-- ===== LOGO DECORATIVO FIXO ===== -->
-<div class="hero-logo-fixed" aria-hidden="true">
-    <img src="static/images/librashub-logo.png" alt="" srcset="">
-</div>
-
 
 <!-- ===== NAVBAR ===== -->
 <nav class="navbar" id="navbar">
@@ -1251,31 +1834,39 @@ if (!empty($_SESSION["usuario_id"])) {
         <a class="btn btn-primary" href="templates/cadastro.php">Criar Conta</a>
     </div>
 
-    <button class="hamburger" id="hamburger" onclick="toggleMobile()" aria-label="Menu"><i class="fa-solid fa-bars" style="color: #fdbe00;"></i></button>
+    <button class="hamburger" id="hamburger" onclick="toggleMobile()" aria-label="Menu" aria-expanded="false" aria-controls="mobileMenu"><i class="fa-solid fa-bars" style="color: #fdbe00;"></i></button>
 </nav>
 
 <div class="mobile-menu" id="mobileMenu">
-    <a class="mobile-link" href="#inicio" onclick="toggleMobile()">Início</a>
-    <a class="mobile-link" href="#ferramentas" onclick="toggleMobile();rolarPara('ferramentas')">Ferramentas de tradução</a>
-    <a class="mobile-link" href="#libras" onclick="toggleMobile()">Libras</a>
-    <a class="mobile-link" href="#sobre" onclick="toggleMobile()">Sobre</a>
-          <div style="display:flex;gap:10px;margin-top:8px;">
-    <a class="btn btn-ghost btn-full" href="templates/login.php">Entrar</a>
-    <a class="btn btn-primary btn-full" href="templates/cadastro.php">Criar Conta</a>
+    <a class="mobile-link" href="#inicio" onclick="toggleMobile(true);rolarPara('inicio')">Início</a>
+    <a class="mobile-link" href="#ferramentas" onclick="toggleMobile(true);rolarPara('ferramentas')">Ferramentas de tradução</a>
+    <a class="mobile-link" href="#libras" onclick="toggleMobile(true);rolarPara('libras')">Libras</a>
+    <a class="mobile-link" href="#sobre" onclick="toggleMobile(true);rolarPara('sobre')">Sobre</a>
+    <div class="mobile-actions">
+        <a class="btn btn-ghost btn-full" href="templates/login.php">Entrar</a>
+        <a class="btn btn-primary btn-full" href="templates/cadastro.php">Criar Conta</a>
     </div>
 </div>
 
 <!-- ===== INÍCIO (hero) ===== -->
-<section class="section" id="inicio" style="text-align:center;padding-bottom:40px;">
-    <div class="hero-tag">TRADUÇÃO DE LIBRAS COM INTELIGÊNCIA ARTIFICIAL</div>
-    <h1><em>Conectando</em> a comunidade surda<br>ao mundo, em tempo real.</h1>
-    <p class="lead">
-        O LibrasHub traduz Língua Brasileira de Sinais em texto e voz instantaneamente,
-        pela câmera ou por vídeo, e reúne tudo isso em uma plataforma feita para você.
-    </p>
-    <div class="hero-cta">
-        <a class="btn btn-primary btn-lg" href="templates/leitor.php">Traduzir agora</a>
-        <a class="btn btn-outline btn-lg" href="#libras">Conhecer as LIBRAS</a>
+<section class="section" id="inicio" style="padding-bottom:40px;">
+    <!-- coluna esquerda: somente a logo -->
+    <div class="hero-logo-fixed" aria-hidden="true">
+        <img src="static/images/librashub-logo.png" alt="">
+    </div>
+
+    <!-- coluna direita: somente o conteúdo -->
+    <div class="hero-content">
+        <div class="hero-tag">TRADUÇÃO DE LIBRAS COM INTELIGÊNCIA ARTIFICIAL</div>
+        <h1><em>Conectando</em> a comunidade surda<br>ao mundo, em tempo real.</h1>
+        <p class="lead">
+            O LibrasHub traduz Língua Brasileira de Sinais em texto e voz instantaneamente,
+            pela câmera ou por vídeo, e reúne tudo isso em uma plataforma feita para você.
+        </p>
+        <div class="hero-cta">
+            <a class="btn btn-primary btn-lg" href="templates/leitor.php">Traduzir agora</a>
+            <a class="btn btn-outline btn-lg" href="#libras">Conhecer as LIBRAS</a>
+        </div>
     </div>
 </section>
 
@@ -1324,7 +1915,7 @@ if (!empty($_SESSION["usuario_id"])) {
 
 <!-- ===== FERRAMENTAS ===== -->
 <section class="section" id="ferramentas" style="background:var(--clr-surface);max-width:100%;padding-left:0;padding-right:0;">
-    <div style="max-width:1100px;margin:0 auto;padding:0 48px;">
+    <div class="section-inner">
         <div class="eyebrow reveal">O que você pode fazer</div>
         <div class="sec-h reveal">Ferramentas do LibrasHub</div>
         <div class="sec-p reveal">Recursos pensados para eliminar barreiras de comunicação na prática. Sem necessidade de cadastro.</div>
@@ -1350,7 +1941,7 @@ if (!empty($_SESSION["usuario_id"])) {
                 <div class="tool-ico-wrap"><i class="fa-solid fa-upload" style="color: #fdbe00;"></i></div>
                 <h3>Upload de Vídeos</h3>
                 <p>
-                    Não tem câmera disponível? Faça o upload de um vídeocontendo sinais
+                    Não tem câmera disponível? Faça o upload de um vídeo contendo sinais
                     de LIBRAS e receba a tradução completa.
                 </p>
                 <div class="tag-row">
@@ -1397,7 +1988,6 @@ if (!empty($_SESSION["usuario_id"])) {
                     <div class="lbl">configurações de mão</div>
                 </div>
             </div>
-        </div>
         </div>
     </div>
 </section>
@@ -1468,8 +2058,6 @@ if (!empty($_SESSION["usuario_id"])) {
                     </p>
                 </div>
             </section>
-
-            </div>
         </div>
     </div>
 </section>
@@ -1781,13 +2369,36 @@ if (!empty($_SESSION["usuario_id"])) {
 
     /* ---------- Menu mobile ---------- */
 
-    function toggleMobile() {
+    function toggleMobile(forceClose = false) {
         const m = document.getElementById('mobileMenu');
         const h = document.getElementById('hamburger');
-        const o = m.classList.contains('open');
-        m.classList.toggle('open', !o);
-        h.textContent = o ? '☰' : '✕';
+        if (!m || !h) return;
+
+        const aberto = m.classList.contains('open');
+        const deveAbrir = forceClose ? false : !aberto;
+
+        m.classList.toggle('open', deveAbrir);
+        h.setAttribute('aria-expanded', String(deveAbrir));
+        h.setAttribute('aria-label', deveAbrir ? 'Fechar menu' : 'Abrir menu');
+        h.innerHTML = deveAbrir
+            ? '<i class="fa-solid fa-xmark" style="color:#fdbe00;"></i>'
+            : '<i class="fa-solid fa-bars" style="color:#fdbe00;"></i>';
+
+        document.body.style.overflow = deveAbrir ? 'hidden' : '';
     }
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            fecharDrops();
+            toggleMobile(true);
+        }
+    });
+
+    window.addEventListener('resize', function () {
+        if (window.innerWidth > 960) {
+            toggleMobile(true);
+        }
+    });
 
     /* ---------- Scroll suave ---------- */
 

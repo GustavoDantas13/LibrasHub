@@ -262,7 +262,7 @@ try {
 
 <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
 >
 
 <link
@@ -723,6 +723,244 @@ try {
 
 }
 
+
+/* ===== RESPONSIVIDADE COMPLETA DO HISTÓRICO ===== */
+*{
+    box-sizing:border-box;
+}
+
+html,
+body{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+}
+
+body{
+    min-height:100vh;
+    min-height:100dvh;
+}
+
+.sidebar{
+    z-index:1200;
+    transition:transform .28s ease;
+}
+
+.content{
+    min-width:0;
+}
+
+.history-container,
+.history-column,
+.history-detail,
+.hist-item,
+.hist-left,
+.hist-content{
+    min-width:0;
+}
+
+.history-detail-text,
+.history-detail-value,
+.hist-text,
+.hist-meta,
+.hist-gesture{
+    overflow-wrap:anywhere;
+    word-break:break-word;
+}
+
+.history-media img,
+.history-media video{
+    max-width:100%;
+    height:auto;
+}
+
+.hist-action{
+    flex-shrink:0;
+}
+
+/* botão hambúrguer */
+.menu-toggle{
+    display:none;
+    position:fixed;
+    top:16px;
+    left:16px;
+    z-index:1400;
+    width:46px;
+    height:46px;
+    align-items:center;
+    justify-content:center;
+    border:1px solid var(--border);
+    border-radius:12px;
+    background:var(--surface);
+    color:var(--text);
+    font-size:1.35rem;
+    cursor:pointer;
+    box-shadow:0 8px 22px rgba(0,0,0,.14);
+}
+
+/* overlay mobile */
+.sidebar-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:1100;
+    background:rgba(0,0,0,.45);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s ease;
+}
+
+.sidebar-overlay.open{
+    opacity:1;
+    pointer-events:auto;
+}
+
+@media(max-width:1100px){
+    .content{
+        padding:30px;
+    }
+
+    .history-layout{
+        grid-template-columns:minmax(0,1fr) minmax(280px,360px);
+        gap:16px;
+    }
+}
+
+@media(max-width:900px){
+    .sidebar{
+        width:min(82vw,300px);
+        height:100vh;
+        height:100dvh;
+        transform:translateX(-105%);
+        box-shadow:10px 0 30px rgba(0,0,0,.18);
+    }
+
+    .sidebar.open{
+        transform:translateX(0);
+    }
+
+    .content{
+        margin-left:0;
+        padding:82px 20px 28px;
+    }
+
+    .menu-toggle{
+        display:flex;
+    }
+
+    .sidebar-overlay{
+        display:block;
+    }
+
+    .history-layout{
+        grid-template-columns:1fr;
+    }
+
+    .history-detail{
+        position:static;
+        min-height:unset;
+    }
+}
+
+@media(max-width:600px){
+    .content{
+        padding:78px 14px 22px;
+    }
+
+    .menu-toggle{
+        top:12px;
+        left:12px;
+        width:44px;
+        height:44px;
+    }
+
+    .page-title{
+        font-size:clamp(1.45rem,7vw,1.9rem);
+        line-height:1.2;
+    }
+
+    .page-subtitle{
+        line-height:1.5;
+    }
+
+    .history-header{
+        align-items:flex-start;
+        gap:10px;
+        flex-direction:column;
+    }
+
+    .hist-item{
+        align-items:flex-start;
+        gap:12px;
+        padding:14px;
+    }
+
+    .hist-left{
+        align-items:flex-start;
+        gap:10px;
+    }
+
+    .hist-icon{
+        width:40px;
+        height:40px;
+    }
+
+    .hist-actions{
+        flex-direction:column;
+        gap:6px;
+    }
+
+    .hist-action{
+        width:38px;
+        height:38px;
+    }
+
+    .history-detail{
+        padding:14px;
+    }
+
+    .history-media video,
+    .history-media img{
+        max-height:220px;
+    }
+
+    .history-detail-text{
+        font-size:.98rem;
+    }
+}
+
+@media(max-width:420px){
+    .content{
+        padding-left:10px;
+        padding-right:10px;
+    }
+
+    .hist-item{
+        display:grid;
+        grid-template-columns:1fr;
+    }
+
+    .hist-actions{
+        flex-direction:row;
+        justify-content:flex-end;
+        width:100%;
+        padding-top:4px;
+    }
+
+    .hist-left{
+        width:100%;
+    }
+
+    .hist-meta{
+        line-height:1.45;
+    }
+
+    .history-detail{
+        padding:12px;
+        border-radius:10px;
+    }
+}
+
 </style>
 
 </head>
@@ -731,7 +969,7 @@ try {
 <body>
 
 
-<aside class="sidebar">
+<aside class="sidebar" id="sidebarMenu">
 
 
     <div class="sidebar-top">
@@ -1716,7 +1954,10 @@ function lerHist(
 <button
     class="menu-toggle"
     id="menuToggle"
+    type="button"
     aria-label="Abrir menu"
+    aria-expanded="false"
+    aria-controls="sidebarMenu"
 >
 
     &#9776;
@@ -1732,7 +1973,6 @@ function lerHist(
 
 
 <script>
-
 (function(){
 
     var btn =
@@ -1740,62 +1980,77 @@ function lerHist(
             "menuToggle"
         );
 
-
     var sidebar =
         document.querySelector(
             ".sidebar"
         );
-
 
     var overlay =
         document.getElementById(
             "sidebarOverlay"
         );
 
-
     if(
         !btn ||
         !sidebar ||
         !overlay
     ){
-
         return;
     }
 
-
-    function open(){
+    function openMenu(){
 
         sidebar.classList.add(
             "open"
         );
 
-
         overlay.classList.add(
             "open"
         );
 
-
         btn.innerHTML =
             "&#10005;";
+
+        btn.setAttribute(
+            "aria-label",
+            "Fechar menu"
+        );
+
+        btn.setAttribute(
+            "aria-expanded",
+            "true"
+        );
+
+        document.body.style.overflow =
+            "hidden";
     }
 
-
-    function close(){
+    function closeMenu(){
 
         sidebar.classList.remove(
             "open"
         );
 
-
         overlay.classList.remove(
             "open"
         );
 
-
         btn.innerHTML =
             "&#9776;";
-    }
 
+        btn.setAttribute(
+            "aria-label",
+            "Abrir menu"
+        );
+
+        btn.setAttribute(
+            "aria-expanded",
+            "false"
+        );
+
+        document.body.style.overflow =
+            "";
+    }
 
     btn.addEventListener(
         "click",
@@ -1804,36 +2059,55 @@ function lerHist(
             sidebar.classList.contains(
                 "open"
             )
-                ? close()
-                : open();
-
+                ? closeMenu()
+                : openMenu();
         }
     );
 
-
     overlay.addEventListener(
         "click",
-        close
+        closeMenu
     );
 
-
     sidebar
-        .querySelectorAll(
-            "a"
-        )
+        .querySelectorAll("a")
         .forEach(
             function(link){
 
                 link.addEventListener(
                     "click",
-                    close
+                    closeMenu
                 );
-
             }
         );
 
-})();
+    document.addEventListener(
+        "keydown",
+        function(event){
 
+            if(
+                event.key === "Escape" &&
+                sidebar.classList.contains("open")
+            ){
+                closeMenu();
+            }
+        }
+    );
+
+    window.addEventListener(
+        "resize",
+        function(){
+
+            if(
+                window.innerWidth > 900 &&
+                sidebar.classList.contains("open")
+            ){
+                closeMenu();
+            }
+        }
+    );
+
+})();
 </script>
 
 

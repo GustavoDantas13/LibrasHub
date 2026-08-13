@@ -147,7 +147,7 @@ if (
 
 <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
 >
 
 <link
@@ -394,6 +394,240 @@ if (
 
 }
 
+
+/* ===== RESPONSIVIDADE COMPLETA DAS CONFIGURAÇÕES ===== */
+*{
+    box-sizing:border-box;
+}
+
+html,
+body{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+}
+
+body{
+    min-height:100vh;
+    min-height:100dvh;
+}
+
+.sidebar{
+    z-index:1200;
+    transition:transform .28s ease;
+}
+
+.content{
+    min-width:0;
+}
+
+.panel{
+    width:100%;
+    min-width:0;
+}
+
+.settings-alert{
+    width:100%;
+    max-width:640px;
+    overflow-wrap:anywhere;
+}
+
+.row-between > div{
+    min-width:0;
+}
+
+.row-title,
+.row-desc,
+.link-item span{
+    overflow-wrap:anywhere;
+}
+
+.field select{
+    width:100%;
+    max-width:100%;
+    min-height:44px;
+}
+
+.seg-btn,
+.link-item{
+    min-height:44px;
+}
+
+/* botão hambúrguer */
+.menu-toggle{
+    display:none;
+    position:fixed;
+    top:16px;
+    left:16px;
+    z-index:1400;
+    width:46px;
+    height:46px;
+    align-items:center;
+    justify-content:center;
+    border:1px solid var(--border);
+    border-radius:12px;
+    background:var(--surface);
+    color:var(--text);
+    font-size:1.35rem;
+    cursor:pointer;
+    box-shadow:0 8px 22px rgba(0,0,0,.14);
+}
+
+/* fundo escuro do menu mobile */
+.sidebar-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:1100;
+    background:rgba(0,0,0,.45);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s ease;
+}
+
+.sidebar-overlay.open{
+    opacity:1;
+    pointer-events:auto;
+}
+
+@media(max-width:1100px){
+    .content{
+        padding:30px;
+    }
+}
+
+@media(max-width:900px){
+    .sidebar{
+        width:min(82vw,300px);
+        height:100vh;
+        height:100dvh;
+        transform:translateX(-105%);
+        box-shadow:10px 0 30px rgba(0,0,0,.18);
+    }
+
+    .sidebar.open{
+        transform:translateX(0);
+    }
+
+    .content{
+        margin-left:0;
+        padding:82px 20px 28px;
+    }
+
+    .menu-toggle{
+        display:flex;
+    }
+
+    .sidebar-overlay{
+        display:block;
+    }
+
+    .panel,
+    .settings-alert{
+        max-width:none !important;
+    }
+}
+
+@media(max-width:600px){
+    .content{
+        padding:78px 14px 22px;
+    }
+
+    .menu-toggle{
+        top:12px;
+        left:12px;
+        width:44px;
+        height:44px;
+    }
+
+    .page-title{
+        font-size:clamp(1.45rem,7vw,1.9rem);
+        line-height:1.2;
+    }
+
+    .panel{
+        padding:14px;
+        border-radius:10px;
+    }
+
+    .seg-row{
+        display:grid;
+        grid-template-columns:1fr;
+        gap:8px;
+    }
+
+    .seg-btn{
+        width:100%;
+        min-height:48px;
+        font-size:.9rem;
+    }
+
+    .row-between{
+        align-items:center;
+        gap:14px;
+    }
+
+    .row-between > div{
+        flex:1;
+    }
+
+    .row-title{
+        font-size:.9rem;
+    }
+
+    .row-desc{
+        font-size:.78rem;
+        line-height:1.4;
+    }
+
+    .toggle{
+        flex-shrink:0;
+    }
+
+    .field select{
+        min-height:48px;
+        font-size:16px;
+    }
+
+    .link-item{
+        min-height:48px;
+        font-size:.9rem;
+        gap:10px;
+    }
+
+    .settings-alert{
+        font-size:.9rem;
+    }
+}
+
+@media(max-width:380px){
+    .content{
+        padding-left:10px;
+        padding-right:10px;
+    }
+
+    .panel{
+        padding:12px;
+        border-radius:8px;
+    }
+
+    .row-between{
+        gap:10px;
+    }
+
+    .row-title{
+        font-size:.86rem;
+    }
+
+    .row-desc{
+        font-size:.74rem;
+    }
+
+    .link-item{
+        font-size:.86rem;
+    }
+}
+
 </style>
 
 </head>
@@ -401,7 +635,7 @@ if (
 <body>
 
 
-<aside class="sidebar">
+<aside class="sidebar" id="sidebarMenu">
 
     <div class="sidebar-top">
 
@@ -772,183 +1006,7 @@ if (
     </div>
 
 
-    <div
-        class="panel"
-        style="
-            max-width:640px;
-            margin-top:20px;
-        "
-    >
-
-        <div class="section-title">
-            🔔 Notificações
-        </div>
-
-
-        <div class="row-between">
-
-            <div>
-
-                <div class="row-title">
-                    Notificações de Email
-                </div>
-
-                <div class="row-desc">
-                    Receber atualizações por email
-                </div>
-
-            </div>
-
-            <button
-                type="button"
-                class="toggle"
-                id="toggleEmail"
-                onclick="alternarPreferencia(this, 'libras_notificacoes_email')"
-                aria-label="Ativar ou desativar notificações de email"
-            ></button>
-
-        </div>
-
-
-        <div class="row-between">
-
-            <div>
-
-                <div class="row-title">
-                    Sons
-                </div>
-
-                <div class="row-desc">
-                    Reproduzir sons nas ações
-                </div>
-
-            </div>
-
-            <button
-                type="button"
-                class="toggle"
-                id="toggleSons"
-                onclick="alternarPreferencia(this, 'libras_sons')"
-                aria-label="Ativar ou desativar sons"
-            ></button>
-
-        </div>
-
-
-        <div class="section-title">
-            🔒 Privacidade e Segurança
-        </div>
-
-
-        <div class="row-between">
-
-            <div>
-
-                <div class="row-title">
-                    Armazenar Vídeos da Câmera
-                </div>
-
-                <div class="row-desc">
-                    Salvar capturas para melhorar traduções
-                </div>
-
-            </div>
-
-            <button
-                type="button"
-                class="toggle"
-                id="toggleVideos"
-                onclick="alternarPreferencia(this, 'libras_armazenar_videos')"
-                aria-label="Ativar ou desativar armazenamento de vídeos"
-            ></button>
-
-        </div>
-
-
-        <div class="row-between">
-
-            <div>
-
-                <div class="row-title">
-                    Perfil Público
-                </div>
-
-                <div class="row-desc">
-                    Tornar seu perfil visível para outros
-                </div>
-
-            </div>
-
-            <button
-                type="button"
-                class="toggle"
-                id="togglePerfil"
-                onclick="alternarPreferencia(this, 'libras_perfil_publico')"
-                aria-label="Ativar ou desativar perfil público"
-            ></button>
-
-        </div>
-
-
-        <div class="section-title">
-            📁 Dados
-        </div>
-
-
-        <button
-            type="button"
-            class="link-item"
-            onclick="window.location.href='configuracoes.php?acao=exportar_dados'"
-        >
-            <span>
-                Exportar Dados
-            </span>
-
-            <i class="fa-solid fa-download"></i>
-        </button>
-
-
-        <form
-            method="POST"
-            action="configuracoes.php"
-            class="settings-form"
-            onsubmit="return confirm('Tem certeza que deseja limpar todo o seu histórico?');"
-        >
-
-            <input
-                type="hidden"
-                name="acao"
-                value="limpar_historico"
-            >
-
-            <button
-                type="submit"
-                class="link-item"
-            >
-                <span>
-                    Limpar Histórico
-                </span>
-
-                <i class="fa-solid fa-trash"></i>
-            </button>
-
-        </form>
-
-
-        <button
-            type="button"
-            class="link-item"
-            onclick="limparCacheLocal()"
-        >
-            <span>
-                Limpar Cache
-            </span>
-
-            <i class="fa-solid fa-broom"></i>
-        </button>
-
-    </div>
-
+    
 </main>
 
 
@@ -1377,7 +1435,10 @@ function limparCacheLocal() {
 <button
     class="menu-toggle"
     id="menuToggle"
+    type="button"
     aria-label="Abrir menu"
+    aria-expanded="false"
+    aria-controls="sidebarMenu"
 >
     &#9776;
 </button>
@@ -1390,7 +1451,6 @@ function limparCacheLocal() {
 
 
 <script>
-
 (function(){
 
     var btn =
@@ -1416,7 +1476,7 @@ function limparCacheLocal() {
         return;
     }
 
-    function open(){
+    function openMenu(){
 
         sidebar.classList.add(
             "open"
@@ -1428,9 +1488,22 @@ function limparCacheLocal() {
 
         btn.innerHTML =
             "&#10005;";
+
+        btn.setAttribute(
+            "aria-label",
+            "Fechar menu"
+        );
+
+        btn.setAttribute(
+            "aria-expanded",
+            "true"
+        );
+
+        document.body.style.overflow =
+            "hidden";
     }
 
-    function close(){
+    function closeMenu(){
 
         sidebar.classList.remove(
             "open"
@@ -1442,6 +1515,19 @@ function limparCacheLocal() {
 
         btn.innerHTML =
             "&#9776;";
+
+        btn.setAttribute(
+            "aria-label",
+            "Abrir menu"
+        );
+
+        btn.setAttribute(
+            "aria-expanded",
+            "false"
+        );
+
+        document.body.style.overflow =
+            "";
     }
 
     btn.addEventListener(
@@ -1451,32 +1537,55 @@ function limparCacheLocal() {
             sidebar.classList.contains(
                 "open"
             )
-                ? close()
-                : open();
+                ? closeMenu()
+                : openMenu();
         }
     );
 
     overlay.addEventListener(
         "click",
-        close
+        closeMenu
     );
 
     sidebar
-        .querySelectorAll(
-            "a"
-        )
+        .querySelectorAll("a")
         .forEach(
             function(link){
 
                 link.addEventListener(
                     "click",
-                    close
+                    closeMenu
                 );
             }
         );
 
-})();
+    document.addEventListener(
+        "keydown",
+        function(event){
 
+            if(
+                event.key === "Escape" &&
+                sidebar.classList.contains("open")
+            ){
+                closeMenu();
+            }
+        }
+    );
+
+    window.addEventListener(
+        "resize",
+        function(){
+
+            if(
+                window.innerWidth > 900 &&
+                sidebar.classList.contains("open")
+            ){
+                closeMenu();
+            }
+        }
+    );
+
+})();
 </script>
 
 

@@ -61,7 +61,7 @@ if (!empty($_SESSION["usuario_id"])) {
 
 <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
 >
 
 <title>LibrasHub - Uploads</title>
@@ -811,6 +811,294 @@ if (!empty($_SESSION["usuario_id"])) {
 
 }
 
+
+/* ===== RESPONSIVIDADE COMPLETA DO UPLOAD ===== */
+*{
+    box-sizing:border-box;
+}
+
+html,
+body{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+}
+
+body{
+    min-height:100vh;
+    min-height:100dvh;
+}
+
+.sidebar{
+    z-index:1200;
+    transition:transform .28s ease;
+}
+
+.content{
+    min-width:0;
+}
+
+.upload-layout > *{
+    min-width:0;
+}
+
+.upload-panel,
+.result-panel,
+.upload-area,
+.result-display,
+.complete-phrase{
+    width:100%;
+    max-width:100%;
+}
+
+.upload-status{
+    flex-wrap:wrap;
+}
+
+.file-item{
+    min-width:0;
+}
+
+.file-info{
+    min-width:0;
+}
+
+.actions button,
+.upload-select-btn{
+    min-height:44px;
+}
+
+.translation-file,
+.translation-result,
+.complete-phrase,
+.result-display{
+    overflow-wrap:anywhere;
+    word-break:break-word;
+}
+
+/* botão hambúrguer */
+.menu-toggle{
+    display:none;
+    position:fixed;
+    top:16px;
+    left:16px;
+    z-index:1400;
+    width:46px;
+    height:46px;
+    align-items:center;
+    justify-content:center;
+    border:1px solid var(--border);
+    border-radius:12px;
+    background:var(--surface);
+    color:var(--text);
+    font-size:1.35rem;
+    cursor:pointer;
+    box-shadow:0 8px 22px rgba(0,0,0,.14);
+}
+
+/* overlay do menu mobile */
+.sidebar-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:1100;
+    background:rgba(0,0,0,.45);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s ease;
+}
+
+.sidebar-overlay.open{
+    opacity:1;
+    pointer-events:auto;
+}
+
+@media(max-width:1100px){
+    .content{
+        padding:30px;
+    }
+
+    .upload-layout{
+        grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);
+        gap:16px;
+    }
+
+    .upload-area{
+        min-height:320px;
+    }
+}
+
+@media(max-width:900px){
+    .sidebar{
+        width:min(82vw,300px);
+        height:100vh;
+        height:100dvh;
+        transform:translateX(-105%);
+        box-shadow:10px 0 30px rgba(0,0,0,.18);
+    }
+
+    .sidebar.open{
+        transform:translateX(0);
+    }
+
+    .content{
+        margin-left:0;
+        padding:82px 20px 28px;
+    }
+
+    .menu-toggle{
+        display:flex;
+    }
+
+    .sidebar-overlay{
+        display:block;
+    }
+
+    .upload-layout{
+        grid-template-columns:1fr;
+    }
+
+    .upload-area{
+        min-height:300px;
+    }
+}
+
+@media(max-width:600px){
+    .content{
+        padding:78px 14px 22px;
+    }
+
+    .menu-toggle{
+        top:12px;
+        left:12px;
+        width:44px;
+        height:44px;
+    }
+
+    .page-title{
+        font-size:clamp(1.45rem,7vw,1.9rem);
+        line-height:1.2;
+    }
+
+    .page-subtitle{
+        line-height:1.5;
+    }
+
+    .upload-panel,
+    .result-panel{
+        padding:14px;
+    }
+
+    .upload-area{
+        min-height:250px;
+        padding:14px;
+    }
+
+    .upload-icon{
+        font-size:1.7rem;
+    }
+
+    .upload-info-title{
+        font-size:.95rem;
+    }
+
+    .upload-info-text,
+    .upload-help{
+        font-size:.78rem;
+    }
+
+    .upload-select-btn{
+        width:100%;
+        min-height:48px;
+        font-size:.9rem;
+    }
+
+    .upload-status{
+        align-items:flex-start;
+        gap:6px;
+    }
+
+    .actions{
+        flex-direction:column;
+    }
+
+    .actions button{
+        width:100%;
+        min-height:48px;
+        font-size:.9rem;
+    }
+
+    .file-item{
+        gap:10px;
+        padding:9px;
+    }
+
+    .file-thumb{
+        width:46px;
+        height:46px;
+    }
+
+    .file-remove{
+        width:36px;
+        height:36px;
+        flex-shrink:0;
+    }
+
+    .translation-item{
+        flex-direction:column;
+        gap:5px;
+    }
+
+    .translation-file{
+        width:100%;
+        white-space:normal;
+    }
+
+    .translation-result{
+        width:100%;
+        max-width:100%;
+        text-align:left;
+    }
+
+    .result-display,
+    .complete-phrase{
+        padding:14px;
+        font-size:.9rem;
+    }
+}
+
+@media(max-width:380px){
+    .content{
+        padding-left:10px;
+        padding-right:10px;
+    }
+
+    .upload-panel,
+    .result-panel{
+        padding:12px;
+        border-radius:8px;
+    }
+
+    .upload-area{
+        min-height:220px;
+        padding:12px;
+    }
+
+    .file-thumb{
+        width:42px;
+        height:42px;
+    }
+
+    .file-name{
+        white-space:normal;
+        overflow-wrap:anywhere;
+    }
+
+    .upload-status{
+        flex-direction:column;
+    }
+}
+
 </style>
 
 </head>
@@ -819,7 +1107,7 @@ if (!empty($_SESSION["usuario_id"])) {
 <body>
 
 
-<aside class="sidebar">
+<aside class="sidebar" id="sidebarMenu">
 
     <div class="sidebar-top">
 
@@ -2604,7 +2892,10 @@ renderizarArquivos();
 <button
     class="menu-toggle"
     id="menuToggle"
+    type="button"
     aria-label="Abrir menu"
+    aria-expanded="false"
+    aria-controls="sidebarMenu"
 >
     &#9776;
 </button>
@@ -2617,7 +2908,6 @@ renderizarArquivos();
 
 
 <script>
-
 (function(){
 
     var btn =
@@ -2635,16 +2925,15 @@ renderizarArquivos();
             "sidebarOverlay"
         );
 
-
     if(
         !btn ||
-        !sidebar
+        !sidebar ||
+        !overlay
     ){
         return;
     }
 
-
-    function open(){
+    function openMenu(){
 
         sidebar.classList.add(
             "open"
@@ -2657,10 +2946,21 @@ renderizarArquivos();
         btn.innerHTML =
             "&#10005;";
 
+        btn.setAttribute(
+            "aria-label",
+            "Fechar menu"
+        );
+
+        btn.setAttribute(
+            "aria-expanded",
+            "true"
+        );
+
+        document.body.style.overflow =
+            "hidden";
     }
 
-
-    function close(){
+    function closeMenu(){
 
         sidebar.classList.remove(
             "open"
@@ -2673,8 +2973,19 @@ renderizarArquivos();
         btn.innerHTML =
             "&#9776;";
 
-    }
+        btn.setAttribute(
+            "aria-label",
+            "Abrir menu"
+        );
 
+        btn.setAttribute(
+            "aria-expanded",
+            "false"
+        );
+
+        document.body.style.overflow =
+            "";
+    }
 
     btn.addEventListener(
         "click",
@@ -2683,18 +2994,15 @@ renderizarArquivos();
             sidebar.classList.contains(
                 "open"
             )
-                ? close()
-                : open();
-
+                ? closeMenu()
+                : openMenu();
         }
     );
 
-
     overlay.addEventListener(
         "click",
-        close
+        closeMenu
     );
-
 
     sidebar
         .querySelectorAll("a")
@@ -2703,14 +3011,38 @@ renderizarArquivos();
 
                 a.addEventListener(
                     "click",
-                    close
+                    closeMenu
                 );
-
             }
         );
 
-})();
+    document.addEventListener(
+        "keydown",
+        function(event){
 
+            if(
+                event.key === "Escape" &&
+                sidebar.classList.contains("open")
+            ){
+                closeMenu();
+            }
+        }
+    );
+
+    window.addEventListener(
+        "resize",
+        function(){
+
+            if(
+                window.innerWidth > 900 &&
+                sidebar.classList.contains("open")
+            ){
+                closeMenu();
+            }
+        }
+    );
+
+})();
 </script>
 
 

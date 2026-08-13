@@ -396,6 +396,233 @@ video{
 
 }
 
+
+/* ===== RESPONSIVIDADE COMPLETA DO LEITOR ===== */
+*{
+    box-sizing:border-box;
+}
+
+html,
+body{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+}
+
+body{
+    min-height:100vh;
+    min-height:100dvh;
+}
+
+.sidebar{
+    z-index:1200;
+    transition:transform .28s ease;
+}
+
+.content{
+    min-width:0;
+}
+
+.leitor-grid > *{
+    min-width:0;
+}
+
+.cam-box,
+.side-panel{
+    width:100%;
+    min-width:0;
+}
+
+.cam-frame{
+    width:100%;
+    max-width:100%;
+}
+
+.status-row{
+    flex-wrap:wrap;
+    align-items:center;
+}
+
+.status-row > span{
+    min-width:0;
+}
+
+.frase-box,
+.palavra-box{
+    overflow-wrap:anywhere;
+    word-break:break-word;
+}
+
+.icon-btn{
+    min-height:44px;
+    white-space:normal;
+}
+
+/* Botão do menu mobile */
+.menu-toggle{
+    display:none;
+    position:fixed;
+    top:16px;
+    left:16px;
+    z-index:1400;
+    width:46px;
+    height:46px;
+    align-items:center;
+    justify-content:center;
+    border:1px solid var(--border);
+    border-radius:12px;
+    background:var(--surface);
+    color:var(--text);
+    font-size:1.35rem;
+    cursor:pointer;
+    box-shadow:0 8px 22px rgba(0,0,0,.14);
+}
+
+/* Fundo escuro atrás da sidebar no mobile */
+.sidebar-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:1100;
+    background:rgba(0,0,0,.45);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s ease;
+}
+
+.sidebar-overlay.open{
+    opacity:1;
+    pointer-events:auto;
+}
+
+@media(max-width:1100px){
+    .content{
+        padding:30px;
+    }
+
+    .leitor-grid{
+        grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);
+        gap:16px;
+    }
+
+    .cam-frame{
+        height:440px;
+    }
+}
+
+@media(max-width:900px){
+    .sidebar{
+        width:min(82vw,300px);
+        height:100vh;
+        height:100dvh;
+        transform:translateX(-105%);
+        box-shadow:10px 0 30px rgba(0,0,0,.18);
+    }
+
+    .sidebar.open{
+        transform:translateX(0);
+    }
+
+    .content{
+        margin-left:0;
+        padding:82px 20px 28px;
+    }
+
+    .menu-toggle{
+        display:flex;
+    }
+
+    .sidebar-overlay{
+        display:block;
+    }
+
+    .leitor-grid{
+        grid-template-columns:1fr;
+    }
+
+    .cam-frame{
+        height:auto;
+        min-height:360px;
+        aspect-ratio:4 / 3;
+    }
+}
+
+@media(max-width:600px){
+    .content{
+        padding:78px 14px 22px;
+    }
+
+    .menu-toggle{
+        top:12px;
+        left:12px;
+        width:44px;
+        height:44px;
+    }
+
+    .page-title{
+        font-size:clamp(1.45rem,7vw,1.9rem);
+        line-height:1.2;
+    }
+
+    .page-subtitle{
+        line-height:1.5;
+    }
+
+    .cam-box,
+    .side-panel{
+        padding:14px;
+    }
+
+    .cam-frame{
+        min-height:260px;
+        height:auto;
+        aspect-ratio:4 / 3;
+    }
+
+    .status-row{
+        gap:8px 14px;
+        font-size:.72rem;
+    }
+
+    .palavra-box{
+        font-size:1.1rem;
+        padding:16px 0;
+    }
+
+    .frase-box{
+        min-height:70px;
+        font-size:.9rem;
+    }
+
+    .icon-btn{
+        min-height:48px;
+        font-size:.9rem;
+    }
+}
+
+@media(max-width:380px){
+    .content{
+        padding-left:10px;
+        padding-right:10px;
+    }
+
+    .cam-box,
+    .side-panel{
+        padding:12px;
+        border-radius:8px;
+    }
+
+    .cam-frame{
+        min-height:220px;
+    }
+
+    .status-row{
+        flex-direction:column;
+        align-items:flex-start;
+        gap:6px;
+    }
+}
+
 </style>
 
 </head>
@@ -682,7 +909,7 @@ video{
                 <div id="camPlaceholder">
 
                     <div class="cam-icon">
-                        📷
+                        <i class="fa-solid fa-video" style="color:#fdbe00;"></i>
                     </div>
 
                     <div>
@@ -791,7 +1018,7 @@ video{
                     type="button"
                     onclick="lerVoz()"
                 >
-                    🔊 Ler em voz alta
+                    <i class="fa-solid fa-volume" style="color:#fdbe00;"></i> Ler em voz alta
                 </button>
 
 
@@ -1536,7 +1763,9 @@ window.addEventListener(
 <button
     class="menu-toggle"
     id="menuToggle"
+    type="button"
     aria-label="Abrir menu"
+    aria-expanded="false"
 >
     &#9776;
 </button>
@@ -1549,7 +1778,6 @@ window.addEventListener(
 
 
 <script>
-
 (function(){
 
     var btn =
@@ -1567,16 +1795,15 @@ window.addEventListener(
             "sidebarOverlay"
         );
 
-
     if(
         !btn ||
-        !sidebar
+        !sidebar ||
+        !overlay
     ){
         return;
     }
 
-
-    function open(){
+    function openMenu(){
 
         sidebar.classList.add(
             "open"
@@ -1589,10 +1816,21 @@ window.addEventListener(
         btn.innerHTML =
             "&#10005;";
 
+        btn.setAttribute(
+            "aria-label",
+            "Fechar menu"
+        );
+
+        btn.setAttribute(
+            "aria-expanded",
+            "true"
+        );
+
+        document.body.style.overflow =
+            "hidden";
     }
 
-
-    function close(){
+    function closeMenu(){
 
         sidebar.classList.remove(
             "open"
@@ -1605,8 +1843,19 @@ window.addEventListener(
         btn.innerHTML =
             "&#9776;";
 
-    }
+        btn.setAttribute(
+            "aria-label",
+            "Abrir menu"
+        );
 
+        btn.setAttribute(
+            "aria-expanded",
+            "false"
+        );
+
+        document.body.style.overflow =
+            "";
+    }
 
     btn.addEventListener(
         "click",
@@ -1615,18 +1864,15 @@ window.addEventListener(
             sidebar.classList.contains(
                 "open"
             )
-                ? close()
-                : open();
-
+                ? closeMenu()
+                : openMenu();
         }
     );
 
-
     overlay.addEventListener(
         "click",
-        close
+        closeMenu
     );
-
 
     sidebar
         .querySelectorAll("a")
@@ -1635,14 +1881,38 @@ window.addEventListener(
 
                 a.addEventListener(
                     "click",
-                    close
+                    closeMenu
                 );
-
             }
         );
 
-})();
+    document.addEventListener(
+        "keydown",
+        function(event){
 
+            if(
+                event.key === "Escape" &&
+                sidebar.classList.contains("open")
+            ){
+                closeMenu();
+            }
+        }
+    );
+
+    window.addEventListener(
+        "resize",
+        function(){
+
+            if(
+                window.innerWidth > 900 &&
+                sidebar.classList.contains("open")
+            ){
+                closeMenu();
+            }
+        }
+    );
+
+})();
 </script>
 
 

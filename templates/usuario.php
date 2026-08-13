@@ -315,7 +315,7 @@ $ehAdmin =
 
 <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
 >
 
 <title>
@@ -929,6 +929,300 @@ $ehAdmin =
 
 }
 
+
+/* ===== RESPONSIVIDADE COMPLETA DO PERFIL ===== */
+*{
+    box-sizing:border-box;
+}
+
+html,
+body{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+}
+
+body{
+    min-height:100vh;
+    min-height:100dvh;
+}
+
+.sidebar{
+    z-index:1200;
+    transition:transform .28s ease;
+}
+
+.content{
+    min-width:0;
+}
+
+.perfil-layout > *,
+.panel,
+.info-grid,
+.info-field,
+.danger-box,
+.modal,
+.modal-body,
+.modal-footer{
+    min-width:0;
+}
+
+.alert{
+    width:100%;
+    max-width:760px !important;
+    overflow-wrap:anywhere;
+}
+
+.user-name,
+.user-email,
+.info-value,
+.danger-desc,
+.member-since{
+    overflow-wrap:anywhere;
+    word-break:break-word;
+}
+
+.logout-btn,
+.btn-danger,
+.btn-cancel,
+.btn,
+.menu-item{
+    min-height:44px;
+}
+
+/* ===== BOTÃO HAMBÚRGUER ===== */
+.menu-toggle{
+    display:none;
+    position:fixed;
+    top:16px;
+    left:16px;
+    z-index:1400;
+    width:46px;
+    height:46px;
+    align-items:center;
+    justify-content:center;
+    border:1px solid var(--border);
+    border-radius:12px;
+    background:var(--surface);
+    color:var(--text);
+    font-size:1.35rem;
+    cursor:pointer;
+    box-shadow:0 8px 22px rgba(0,0,0,.14);
+}
+
+/* ===== OVERLAY DO MENU ===== */
+.sidebar-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:1100;
+    background:rgba(0,0,0,.45);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s ease;
+}
+
+.sidebar-overlay.open{
+    opacity:1;
+    pointer-events:auto;
+}
+
+@media(max-width:1100px){
+    .content{
+        padding:30px;
+    }
+
+    .perfil-layout{
+        grid-template-columns:minmax(240px,280px) minmax(0,1fr);
+        gap:16px;
+    }
+}
+
+@media(max-width:900px){
+    .sidebar{
+        width:min(82vw,300px);
+        height:100vh;
+        height:100dvh;
+        transform:translateX(-105%);
+        box-shadow:10px 0 30px rgba(0,0,0,.18);
+    }
+
+    .sidebar.open{
+        transform:translateX(0);
+    }
+
+    .content{
+        margin-left:0;
+        padding:82px 20px 28px;
+    }
+
+    .menu-toggle{
+        display:flex;
+    }
+
+    .sidebar-overlay{
+        display:block;
+    }
+
+    .perfil-layout{
+        grid-template-columns:1fr;
+    }
+
+    .perfil-layout > .panel:first-child{
+        width:100%;
+    }
+}
+
+@media(max-width:600px){
+    .content{
+        padding:78px 14px 22px;
+    }
+
+    .menu-toggle{
+        top:12px;
+        left:12px;
+        width:44px;
+        height:44px;
+    }
+
+    .panel{
+        padding:14px;
+        border-radius:10px;
+    }
+
+    .avatar-lg{
+        width:64px;
+        height:64px;
+        font-size:1.3rem;
+    }
+
+    .stats-row{
+        gap:10px;
+    }
+
+    .stat-num{
+        font-size:1.1rem;
+    }
+
+    .stat-label{
+        font-size:.64rem;
+    }
+
+    .info-grid{
+        grid-template-columns:1fr;
+    }
+
+    .info-field{
+        border-bottom:1px solid var(--border) !important;
+    }
+
+    .info-field:last-child{
+        border-bottom:none !important;
+    }
+
+    .info-header{
+        flex-direction:column;
+        align-items:stretch;
+        gap:12px;
+    }
+
+    .info-header .btn{
+        width:100%;
+        justify-content:center;
+        min-height:48px;
+    }
+
+    .danger-box{
+        flex-direction:column;
+        align-items:stretch;
+        padding:16px;
+    }
+
+    .danger-box .btn-danger{
+        width:100%;
+        justify-content:center;
+        min-height:48px;
+        white-space:normal !important;
+    }
+
+    .modal-backdrop{
+        padding:12px;
+        align-items:flex-end;
+    }
+
+    .modal{
+        max-width:none;
+        border-radius:16px 16px 0 0;
+        max-height:92dvh;
+        overflow-y:auto;
+    }
+
+    .modal-header{
+        padding:16px 16px 13px;
+    }
+
+    .modal-body{
+        padding:18px 16px;
+    }
+
+    .modal-footer{
+        padding:14px 16px 18px;
+        flex-direction:column-reverse;
+    }
+
+    .modal-footer > button,
+    .modal-footer > form,
+    .modal-footer > form > button{
+        width:100%;
+    }
+
+    .modal-footer .btn,
+    .modal-footer .btn-cancel,
+    .modal-footer .btn-danger{
+        min-height:48px;
+        justify-content:center;
+    }
+
+    .confirm-input-wrap input,
+    .field input{
+        font-size:16px;
+        min-height:48px;
+    }
+}
+
+@media(max-width:380px){
+    .content{
+        padding-left:10px;
+        padding-right:10px;
+    }
+
+    .panel{
+        padding:12px;
+        border-radius:8px;
+    }
+
+    .stats-row{
+        margin:14px 0;
+    }
+
+    .stat-divider{
+        display:none;
+    }
+
+    .stats-row{
+        display:grid;
+        grid-template-columns:repeat(3,1fr);
+    }
+
+    .modal-backdrop{
+        padding:0;
+    }
+
+    .modal{
+        border-radius:14px 14px 0 0;
+    }
+}
+
 </style>
 
 </head>
@@ -936,7 +1230,7 @@ $ehAdmin =
 <body>
 
 
-<aside class="sidebar">
+<aside class="sidebar" id="sidebarMenu">
 
     <div class="sidebar-top">
 
@@ -2185,7 +2479,10 @@ function verificarConfirmacao(){
 <button
     class="menu-toggle"
     id="menuToggle"
+    type="button"
     aria-label="Abrir menu"
+    aria-expanded="false"
+    aria-controls="sidebarMenu"
 >
     &#9776;
 </button>
@@ -2198,7 +2495,6 @@ function verificarConfirmacao(){
 
 
 <script>
-
 (function(){
 
     var btn =
@@ -2218,13 +2514,13 @@ function verificarConfirmacao(){
 
     if(
         !btn ||
-        !sidebar
+        !sidebar ||
+        !overlay
     ){
         return;
     }
 
-
-    function openM(){
+    function openMenu(){
 
         sidebar.classList.add(
             "open"
@@ -2236,10 +2532,22 @@ function verificarConfirmacao(){
 
         btn.innerHTML =
             "&#10005;";
+
+        btn.setAttribute(
+            "aria-label",
+            "Fechar menu"
+        );
+
+        btn.setAttribute(
+            "aria-expanded",
+            "true"
+        );
+
+        document.body.style.overflow =
+            "hidden";
     }
 
-
-    function closeM(){
+    function closeMenu(){
 
         sidebar.classList.remove(
             "open"
@@ -2251,8 +2559,26 @@ function verificarConfirmacao(){
 
         btn.innerHTML =
             "&#9776;";
-    }
 
+        btn.setAttribute(
+            "aria-label",
+            "Abrir menu"
+        );
+
+        btn.setAttribute(
+            "aria-expanded",
+            "false"
+        );
+
+        if(
+            !document.querySelector(
+                ".modal-backdrop.open"
+            )
+        ){
+            document.body.style.overflow =
+                "";
+        }
+    }
 
     btn.addEventListener(
         "click",
@@ -2261,34 +2587,55 @@ function verificarConfirmacao(){
             sidebar.classList.contains(
                 "open"
             )
-                ? closeM()
-                : openM();
+                ? closeMenu()
+                : openMenu();
         }
     );
 
-
     overlay.addEventListener(
         "click",
-        closeM
+        closeMenu
     );
 
-
     sidebar
-        .querySelectorAll(
-            "a"
-        )
+        .querySelectorAll("a")
         .forEach(
             function(link){
 
                 link.addEventListener(
                     "click",
-                    closeM
+                    closeMenu
                 );
             }
         );
 
-})();
+    document.addEventListener(
+        "keydown",
+        function(event){
 
+            if(
+                event.key === "Escape" &&
+                sidebar.classList.contains("open")
+            ){
+                closeMenu();
+            }
+        }
+    );
+
+    window.addEventListener(
+        "resize",
+        function(){
+
+            if(
+                window.innerWidth > 900 &&
+                sidebar.classList.contains("open")
+            ){
+                closeMenu();
+            }
+        }
+    );
+
+})();
 </script>
 
 
