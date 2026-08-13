@@ -264,41 +264,57 @@ if (
 
     $baseProjeto = dirname(__DIR__);
 
-    $arquivosModelo = [
+    $arquivosOrigem = [
         "labels" => [
-            "absoluto" => $baseProjeto
-                . DIRECTORY_SEPARATOR
-                . "labels.npy",
-            "relativo" => "labels.npy"
+            "absoluto" =>
+                $baseProjeto
+                .
+                DIRECTORY_SEPARATOR
+                .
+                "labels.npy",
+            "nome" =>
+                "labels.npy"
         ],
 
         "modelo_gesto" => [
-            "absoluto" => $baseProjeto
-                . DIRECTORY_SEPARATOR
-                . "modelo_gestos.keras",
-            "relativo" => "modelo_gestos.keras"
+            "absoluto" =>
+                $baseProjeto
+                .
+                DIRECTORY_SEPARATOR
+                .
+                "modelo_gestos.keras",
+            "nome" =>
+                "modelo_gestos.keras"
         ],
 
         "scaler_mean" => [
-            "absoluto" => $baseProjeto
-                . DIRECTORY_SEPARATOR
-                . "scaler_mean.npy",
-            "relativo" => "scaler_mean.npy"
+            "absoluto" =>
+                $baseProjeto
+                .
+                DIRECTORY_SEPARATOR
+                .
+                "scaler_mean.npy",
+            "nome" =>
+                "scaler_mean.npy"
         ],
 
         "scaler_scale" => [
-            "absoluto" => $baseProjeto
-                . DIRECTORY_SEPARATOR
-                . "scaler_scale.npy",
-            "relativo" => "scaler_scale.npy"
+            "absoluto" =>
+                $baseProjeto
+                .
+                DIRECTORY_SEPARATOR
+                .
+                "scaler_scale.npy",
+            "nome" =>
+                "scaler_scale.npy"
         ]
     ];
 
     $faltando = [];
 
     foreach (
-        $arquivosModelo
-        as $campo => $dadosArquivo
+        $arquivosOrigem
+        as $dadosArquivo
     ) {
 
         if (
@@ -308,7 +324,7 @@ if (
         ) {
 
             $faltando[] =
-                $dadosArquivo["relativo"];
+                $dadosArquivo["nome"];
         }
     }
 
@@ -328,7 +344,108 @@ if (
         exit;
     }
 
+    $identificador =
+        date("Ymd_His")
+        .
+        "_"
+        .
+        bin2hex(
+            random_bytes(4)
+        );
+
+    $pastaRelativa =
+        "modelos_traducao/"
+        .
+        $identificador;
+
+    $pastaAbsoluta =
+        $baseProjeto
+        .
+        DIRECTORY_SEPARATOR
+        .
+        str_replace(
+            "/",
+            DIRECTORY_SEPARATOR,
+            $pastaRelativa
+        );
+
+    if (
+        !is_dir(
+            $pastaAbsoluta
+        )
+        &&
+        !mkdir(
+            $pastaAbsoluta,
+            0777,
+            true
+        )
+    ) {
+
+        http_response_code(500);
+
+        echo json_encode([
+            "success" => false,
+            "error" => "Não foi possível criar a pasta da versão do modelo."
+        ]);
+
+        exit;
+    }
+
+    $arquivosSalvos = [];
+
     try {
+
+        foreach (
+            $arquivosOrigem
+            as $campo => $dadosArquivo
+        ) {
+
+            $destino =
+                $pastaAbsoluta
+                .
+                DIRECTORY_SEPARATOR
+                .
+                $dadosArquivo["nome"];
+
+            if (
+                !copy(
+                    $dadosArquivo["absoluto"],
+                    $destino
+                )
+            ) {
+
+                throw new RuntimeException(
+                    "Não foi possível salvar "
+                    .
+                    $dadosArquivo["nome"]
+                    .
+                    "."
+                );
+            }
+
+            $arquivosSalvos[$campo] =
+                $pastaRelativa
+                .
+                "/"
+                .
+                $dadosArquivo["nome"];
+        }
+
+        $pdo->beginTransaction();
+
+        $temAtivo =
+            (int) $pdo
+                ->query("
+                    SELECT COUNT(*)
+                    FROM modelo_traducao
+                    WHERE ativo = 1
+                ")
+                ->fetchColumn();
+
+        $novoAtivo =
+            $temAtivo === 0
+                ? 1
+                : 0;
 
         $stmt = $pdo->prepare("
             INSERT INTO modelo_traducao (
@@ -336,9 +453,11 @@ if (
                 labels,
                 modelo_gesto,
                 scaler_mean,
-                scaler_scale
+                scaler_scale,
+                ativo
             )
             VALUES (
+                ?,
                 ?,
                 ?,
                 ?,
@@ -349,37 +468,169 @@ if (
 
         $stmt->execute([
             $idUsuarioAtual,
-            $arquivosModelo["labels"]["relativo"],
-            $arquivosModelo["modelo_gesto"]["relativo"],
-            $arquivosModelo["scaler_mean"]["relativo"],
-            $arquivosModelo["scaler_scale"]["relativo"]
+            $arquivosSalvos["labels"],
+            $arquivosSalvos["modelo_gesto"],
+            $arquivosSalvos["scaler_mean"],
+            $arquivosSalvos["scaler_scale"],
+            $novoAtivo
         ]);
+
+        $idModelo =
+            (int) $pdo->lastInsertId();
+
+        if (
+            $novoAtivo === 0
+        ) {
+
+            $stmtAtivo =
+                $pdo->query("
+                    SELECT
+                        labels,
+                        modelo_gesto,
+                        scaler_mean,
+                        scaler_scale
+                    FROM modelo_traducao
+                    WHERE ativo = 1
+                    LIMIT 1
+                ");
+
+            $modeloAtivoAtual =
+                $stmtAtivo->fetch(
+                    PDO::FETCH_ASSOC
+                );
+
+            if (
+                $modeloAtivoAtual
+            ) {
+
+                $mapaRestauracao = [
+                    "labels" =>
+                        "labels.npy",
+
+                    "modelo_gesto" =>
+                        "modelo_gestos.keras",
+
+                    "scaler_mean" =>
+                        "scaler_mean.npy",
+
+                    "scaler_scale" =>
+                        "scaler_scale.npy"
+                ];
+
+                foreach (
+                    $mapaRestauracao
+                    as $campo => $nomeDestino
+                ) {
+
+                    $origemAtiva =
+                        $baseProjeto
+                        .
+                        DIRECTORY_SEPARATOR
+                        .
+                        str_replace(
+                            "/",
+                            DIRECTORY_SEPARATOR,
+                            $modeloAtivoAtual[$campo]
+                        );
+
+                    $destinoAtivo =
+                        $baseProjeto
+                        .
+                        DIRECTORY_SEPARATOR
+                        .
+                        $nomeDestino;
+
+                    if (
+                        !is_file(
+                            $origemAtiva
+                        )
+                        ||
+                        !copy(
+                            $origemAtiva,
+                            $destinoAtivo
+                        )
+                    ) {
+
+                        throw new RuntimeException(
+                            "Não foi possível restaurar o modelo atualmente ativo."
+                        );
+                    }
+                }
+            }
+
+        } else {
+
+            file_put_contents(
+                $baseProjeto
+                .
+                DIRECTORY_SEPARATOR
+                .
+                "modelo_ativo.version",
+                $idModelo
+                .
+                "|"
+                .
+                microtime(true)
+            );
+        }
+
+        $pdo->commit();
 
         echo json_encode([
             "success" => true,
-            "id_modelo" => (int) $pdo->lastInsertId(),
-            "arquivos" => [
-                "labels" =>
-                    $arquivosModelo["labels"]["relativo"],
-
-                "modelo_gesto" =>
-                    $arquivosModelo["modelo_gesto"]["relativo"],
-
-                "scaler_mean" =>
-                    $arquivosModelo["scaler_mean"]["relativo"],
-
-                "scaler_scale" =>
-                    $arquivosModelo["scaler_scale"]["relativo"]
-            ]
+            "id_modelo" => $idModelo,
+            "ativo" => $novoAtivo === 1,
+            "arquivos" => $arquivosSalvos
         ]);
 
-    } catch (PDOException $erroBanco) {
+    } catch (Throwable $erroRegistro) {
+
+        if (
+            $pdo->inTransaction()
+        ) {
+
+            $pdo->rollBack();
+        }
+
+        if (
+            is_dir(
+                $pastaAbsoluta
+            )
+        ) {
+
+            foreach (
+                glob(
+                    $pastaAbsoluta
+                    .
+                    DIRECTORY_SEPARATOR
+                    .
+                    "*"
+                )
+                as $arquivo
+            ) {
+
+                if (
+                    is_file(
+                        $arquivo
+                    )
+                ) {
+
+                    @unlink(
+                        $arquivo
+                    );
+                }
+            }
+
+            @rmdir(
+                $pastaAbsoluta
+            );
+        }
 
         http_response_code(500);
 
         echo json_encode([
             "success" => false,
-            "error" => "Não foi possível registrar o modelo no banco."
+            "error" => $erroRegistro->getMessage()
         ]);
     }
 
@@ -614,6 +865,454 @@ if (
 
         $abaAtiva =
             "usuarios";
+    }
+
+
+    elseif (
+        $acao === "ativar_modelo"
+    ) {
+
+        $idModelo =
+            (int) (
+                $_POST["modelo_id"]
+                ?? 0
+            );
+
+
+        if (
+            $idModelo <= 0
+        ) {
+
+            $erro =
+                "Modelo inválido.";
+
+        } else {
+
+            try {
+
+                $stmt =
+                    $pdo->prepare("
+                        SELECT
+                            id_modelo,
+                            labels,
+                            modelo_gesto,
+                            scaler_mean,
+                            scaler_scale,
+                            ativo
+                        FROM modelo_traducao
+                        WHERE id_modelo = ?
+                        LIMIT 1
+                    ");
+
+
+                $stmt->execute([
+                    $idModelo
+                ]);
+
+
+                $modeloSelecionado =
+                    $stmt->fetch(
+                        PDO::FETCH_ASSOC
+                    );
+
+
+                if (
+                    !$modeloSelecionado
+                ) {
+
+                    $erro =
+                        "Modelo não encontrado.";
+
+                } elseif (
+                    (int) $modeloSelecionado[
+                        "ativo"
+                    ] === 1
+                ) {
+
+                    $sucesso =
+                        "Este modelo já está em uso.";
+
+                } else {
+
+                    $baseProjeto =
+                        dirname(
+                            __DIR__
+                        );
+
+
+                    $mapaArquivos = [
+
+                        "labels" =>
+                            "labels.npy",
+
+                        "modelo_gesto" =>
+                            "modelo_gestos.keras",
+
+                        "scaler_mean" =>
+                            "scaler_mean.npy",
+
+                        "scaler_scale" =>
+                            "scaler_scale.npy"
+
+                    ];
+
+
+                    foreach (
+                        $mapaArquivos
+                        as $campo => $nomeDestino
+                    ) {
+
+                        $origem =
+                            $baseProjeto
+                            .
+                            DIRECTORY_SEPARATOR
+                            .
+                            str_replace(
+                                "/",
+                                DIRECTORY_SEPARATOR,
+                                $modeloSelecionado[
+                                    $campo
+                                ]
+                            );
+
+
+                        if (
+                            !is_file(
+                                $origem
+                            )
+                        ) {
+
+                            throw new RuntimeException(
+                                "O arquivo "
+                                .
+                                basename(
+                                    $modeloSelecionado[
+                                        $campo
+                                    ]
+                                )
+                                .
+                                " não foi encontrado para este modelo."
+                            );
+                        }
+                    }
+
+
+                    foreach (
+                        $mapaArquivos
+                        as $campo => $nomeDestino
+                    ) {
+
+                        $origem =
+                            $baseProjeto
+                            .
+                            DIRECTORY_SEPARATOR
+                            .
+                            str_replace(
+                                "/",
+                                DIRECTORY_SEPARATOR,
+                                $modeloSelecionado[
+                                    $campo
+                                ]
+                            );
+
+
+                        $destino =
+                            $baseProjeto
+                            .
+                            DIRECTORY_SEPARATOR
+                            .
+                            $nomeDestino;
+
+
+                        if (
+                            !copy(
+                                $origem,
+                                $destino
+                            )
+                        ) {
+
+                            throw new RuntimeException(
+                                "Não foi possível ativar os arquivos do modelo."
+                            );
+                        }
+                    }
+
+
+                    $pdo->beginTransaction();
+
+
+                    $pdo->exec("
+                        UPDATE modelo_traducao
+                        SET ativo = 0
+                    ");
+
+
+                    $stmt =
+                        $pdo->prepare("
+                            UPDATE modelo_traducao
+                            SET ativo = 1
+                            WHERE id_modelo = ?
+                        ");
+
+
+                    $stmt->execute([
+                        $idModelo
+                    ]);
+
+
+                    file_put_contents(
+                        $baseProjeto
+                        .
+                        DIRECTORY_SEPARATOR
+                        .
+                        "modelo_ativo.version",
+                        $idModelo
+                        .
+                        "|"
+                        .
+                        microtime(
+                            true
+                        )
+                    );
+
+
+                    $pdo->commit();
+
+
+                    $sucesso =
+                        "Modelo #"
+                        .
+                        $idModelo
+                        .
+                        " definido como modelo de tradução em uso.";
+                }
+
+
+            } catch (
+                Throwable $erroModelo
+            ) {
+
+                if (
+                    $pdo->inTransaction()
+                ) {
+
+                    $pdo->rollBack();
+                }
+
+
+                $erro =
+                    $erroModelo->getMessage();
+            }
+        }
+
+
+        $abaAtiva =
+            "treinamento";
+    }
+
+
+    elseif (
+        $acao === "excluir_modelo"
+    ) {
+
+        $idModelo =
+            (int) (
+                $_POST["modelo_id"]
+                ?? 0
+            );
+
+
+        if (
+            $idModelo <= 0
+        ) {
+
+            $erro =
+                "Modelo inválido.";
+
+        } else {
+
+            try {
+
+                $stmt =
+                    $pdo->prepare("
+                        SELECT
+                            id_modelo,
+                            labels,
+                            modelo_gesto,
+                            scaler_mean,
+                            scaler_scale,
+                            ativo
+                        FROM modelo_traducao
+                        WHERE id_modelo = ?
+                        LIMIT 1
+                    ");
+
+
+                $stmt->execute([
+                    $idModelo
+                ]);
+
+
+                $modeloExcluir =
+                    $stmt->fetch(
+                        PDO::FETCH_ASSOC
+                    );
+
+
+                if (
+                    !$modeloExcluir
+                ) {
+
+                    $erro =
+                        "Modelo não encontrado.";
+
+                } elseif (
+                    (int) $modeloExcluir[
+                        "ativo"
+                    ] === 1
+                ) {
+
+                    $erro =
+                        "O modelo em uso não pode ser excluído. Ative outro modelo primeiro.";
+
+                } else {
+
+                    $stmt =
+                        $pdo->prepare("
+                            DELETE FROM modelo_traducao
+                            WHERE id_modelo = ?
+                        ");
+
+
+                    $stmt->execute([
+                        $idModelo
+                    ]);
+
+
+                    if (
+                        $stmt->rowCount() === 0
+                    ) {
+
+                        throw new RuntimeException(
+                            "Não foi possível excluir o modelo."
+                        );
+                    }
+
+
+                    $baseProjeto =
+                        dirname(
+                            __DIR__
+                        );
+
+
+                    $pastasRemover = [];
+
+
+                    foreach (
+                        [
+                            "labels",
+                            "modelo_gesto",
+                            "scaler_mean",
+                            "scaler_scale"
+                        ]
+                        as $campo
+                    ) {
+
+                        $relativo =
+                            str_replace(
+                                "\\",
+                                "/",
+                                trim(
+                                    (string) $modeloExcluir[
+                                        $campo
+                                    ]
+                                )
+                            );
+
+
+                        if (
+                            !str_starts_with(
+                                $relativo,
+                                "modelos_traducao/"
+                            )
+                        ) {
+
+                            continue;
+                        }
+
+
+                        $arquivo =
+                            $baseProjeto
+                            .
+                            DIRECTORY_SEPARATOR
+                            .
+                            str_replace(
+                                "/",
+                                DIRECTORY_SEPARATOR,
+                                $relativo
+                            );
+
+
+                        if (
+                            is_file(
+                                $arquivo
+                            )
+                        ) {
+
+                            @unlink(
+                                $arquivo
+                            );
+                        }
+
+
+                        $pastasRemover[] =
+                            dirname(
+                                $arquivo
+                            );
+                    }
+
+
+                    foreach (
+                        array_unique(
+                            $pastasRemover
+                        )
+                        as $pastaRemover
+                    ) {
+
+                        if (
+                            is_dir(
+                                $pastaRemover
+                            )
+                        ) {
+
+                            @rmdir(
+                                $pastaRemover
+                            );
+                        }
+                    }
+
+
+                    $sucesso =
+                        "Modelo #"
+                        .
+                        $idModelo
+                        .
+                        " excluído.";
+                }
+
+
+            } catch (
+                Throwable $erroModelo
+            ) {
+
+                $erro =
+                    $erroModelo->getMessage();
+            }
+        }
+
+
+        $abaAtiva =
+            "treinamento";
     }
 
 
@@ -882,6 +1581,7 @@ if ($ehAdmin) {
                     m.modelo_gesto,
                     m.scaler_mean,
                     m.scaler_scale,
+                    m.ativo,
 
                     u.nm_usuario
                         AS administrador
@@ -2427,6 +3127,26 @@ $inicial =
                                     </div>
 
 
+                                    <?php if (
+                                        (int) $modelo["ativo"] === 1
+                                    ): ?>
+
+                                        <div
+                                            class="count-badge"
+                                            style="
+                                                margin-top:8px;
+                                                display:inline-flex;
+                                                align-items:center;
+                                                gap:6px;
+                                            "
+                                        >
+                                            <i class="fa-solid fa-circle-check"></i>
+                                            Em uso
+                                        </div>
+
+                                    <?php endif; ?>
+
+
                                     <div class="model-date">
 
                                         Treinado por
@@ -2527,6 +3247,114 @@ $inicial =
 
 
                                 <?php endforeach; ?>
+
+
+                            </div>
+
+
+                            <div
+                                class="training-actions"
+                                style="
+                                    margin-top:16px;
+                                    justify-content:flex-end;
+                                    flex-wrap:wrap;
+                                "
+                            >
+
+
+                                <?php if (
+                                    (int) $modelo["ativo"] !== 1
+                                ): ?>
+
+                                    <form
+                                        method="POST"
+                                        action="admin.php"
+                                        onsubmit="
+                                            return confirm(
+                                                'Deseja usar este modelo nas traduções?'
+                                            );
+                                        "
+                                    >
+
+                                        <input
+                                            type="hidden"
+                                            name="acao"
+                                            value="ativar_modelo"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="aba_atual"
+                                            value="treinamento"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="modelo_id"
+                                            value="<?= (int) $modelo["id_modelo"] ?>"
+                                        >
+
+                                        <button
+                                            type="submit"
+                                            class="btn-primary"
+                                        >
+                                            <i class="fa-solid fa-rotate"></i>
+                                            Usar este modelo
+                                        </button>
+
+                                    </form>
+
+
+                                    <form
+                                        method="POST"
+                                        action="admin.php"
+                                        onsubmit="
+                                            return confirm(
+                                                'Deseja excluir permanentemente este modelo e seus arquivos?'
+                                            );
+                                        "
+                                    >
+
+                                        <input
+                                            type="hidden"
+                                            name="acao"
+                                            value="excluir_modelo"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="aba_atual"
+                                            value="treinamento"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="modelo_id"
+                                            value="<?= (int) $modelo["id_modelo"] ?>"
+                                        >
+
+                                        <button
+                                            type="submit"
+                                            class="btn-danger-outline"
+                                        >
+                                            <i class="fa-solid fa-trash"></i>
+                                            Excluir modelo
+                                        </button>
+
+                                    </form>
+
+                                <?php else: ?>
+
+                                    <button
+                                        type="button"
+                                        class="btn-secondary"
+                                        disabled
+                                    >
+                                        <i class="fa-solid fa-circle-check"></i>
+                                        Modelo em uso
+                                    </button>
+
+                                <?php endif; ?>
 
 
                             </div>
@@ -5305,9 +6133,25 @@ $inicial =
                         }
                     );
 
-                return await lerJsonSeguro(
-                    resposta
-                );
+                const dados =
+                    await lerJsonSeguro(
+                        resposta
+                    );
+
+                if (
+                    !resposta.ok
+                    ||
+                    !dados.success
+                ) {
+
+                    throw new Error(
+                        dados.error
+                        ??
+                        "Não foi possível registrar o modelo treinado."
+                    );
+                }
+
+                return dados;
             }
 
 
@@ -5538,7 +6382,19 @@ $inicial =
                                 +
                                 registroModelo.id_modelo
                                 +
-                                "."
+                                (
+                                    registroModelo.ativo
+                                        ? " e definido como modelo em uso."
+                                        : "."
+                                )
+                            );
+
+                            setTimeout(
+                                () => {
+                                    window.location.href =
+                                        "admin.php?aba=treinamento";
+                                },
+                                900
                             );
 
                         } catch (erroRegistro) {

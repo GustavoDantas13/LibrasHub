@@ -1,8 +1,13 @@
 <?php
 
+use PHPMailer\PHPMailer\Exception;
+use PHPMailer\PHPMailer\PHPMailer;
+
 session_start();
 
 require_once "configs/config.php";
+require_once "configs/email.php";
+require_once "../vendor/autoload.php";
 
 if (empty($_SESSION["usuario_id"])) {
     header("Location: ../index.php");
@@ -122,14 +127,6 @@ if (
 
     } else {
 
-        $emailSuporte =
-            "librashubsuporte@gmail.com";
-
-        $assunto =
-            "Contato LibrasHub - "
-            .
-            $nomeContato;
-
         $nomeSeguro =
             str_replace(
                 [
@@ -150,54 +147,90 @@ if (
                 $emailContato
             );
 
-        $corpo =
-            "Nova mensagem enviada pela página de ajuda do LibrasHub.\n\n"
-            .
-            "Usuário: "
-            .
-            $nomeSeguro
-            .
-            "\n"
-            .
-            "Email: "
-            .
-            $emailSeguro
-            .
-            "\n"
-            .
-            "ID do usuário: "
-            .
-            $idUsuarioAtual
-            .
-            "\n\n"
-            .
-            "Mensagem:\n"
-            .
-            $mensagemContato
-            .
-            "\n";
+        try {
 
-        $headers = [
-            "MIME-Version: 1.0",
-            "Content-Type: text/plain; charset=UTF-8",
-            "From: LibrasHub <no-reply@librashub.com>",
-            "Reply-To: "
-            .
-            $emailSeguro
-        ];
+            $mail =
+                new PHPMailer(
+                    true
+                );
 
-        $enviado =
-            @mail(
-                $emailSuporte,
-                $assunto,
-                $corpo,
-                implode(
-                    "\r\n",
-                    $headers
-                )
+            $mail->isSMTP();
+
+            $mail->Host =
+                SMTP_HOST;
+
+            $mail->SMTPAuth =
+                true;
+
+            $mail->Username =
+                SMTP_USUARIO;
+
+            $mail->Password =
+                SMTP_SENHA;
+
+            $mail->SMTPSecure =
+                PHPMailer::ENCRYPTION_STARTTLS;
+
+            $mail->Port =
+                SMTP_PORT;
+
+            $mail->CharSet =
+                "UTF-8";
+
+            $mail->Timeout =
+                20;
+
+            $mail->setFrom(
+                SMTP_REMETENTE,
+                SMTP_NOME
             );
 
-        if ($enviado) {
+            $mail->addAddress(
+                EMAIL_SUPORTE
+            );
+
+            $mail->addReplyTo(
+                $emailSeguro,
+                $nomeSeguro
+            );
+
+            $mail->isHTML(
+                false
+            );
+
+            $mail->Subject =
+                "Contato LibrasHub - "
+                .
+                $nomeSeguro;
+
+            $mail->Body =
+                "Nova mensagem enviada pela página de ajuda do LibrasHub.\n\n"
+                .
+                "Usuário: "
+                .
+                $nomeSeguro
+                .
+                "\n"
+                .
+                "Email: "
+                .
+                $emailSeguro
+                .
+                "\n"
+                .
+                "ID do usuário: "
+                .
+                $idUsuarioAtual
+                .
+                "\n\n"
+                .
+                "Mensagem:\n"
+                .
+                $mensagemContato
+                .
+                "\n";
+
+            $mail->send();
 
             $sucesso =
                 "Mensagem enviada com sucesso.";
@@ -205,10 +238,14 @@ if (
             $mensagemContato =
                 "";
 
-        } else {
+        } catch (
+            Exception $e
+        ) {
 
             $erro =
-                "Não foi possível enviar o email. Verifique a configuração de SMTP do PHP/XAMPP.";
+                "Não foi possível enviar a mensagem. "
+                .
+                $mail->ErrorInfo;
         }
     }
 }
@@ -969,7 +1006,7 @@ if (
 
 
             <div class="contact-note">
-                O envio de email depende da configuração de SMTP do servidor PHP.
+                Sua mensagem será enviada diretamente para o suporte do LibrasHub.
             </div>
 
         </div>

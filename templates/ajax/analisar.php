@@ -1,98 +1,375 @@
 <?php
 
-header("Content-Type: application/json");
+header(
+    "Content-Type: application/json; charset=utf-8"
+);
 
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-set_time_limit(300);
+ini_set(
+    "display_errors",
+    "0"
+);
 
-if (!isset($_FILES["mediaFile"])) {
-    echo json_encode([
-        "success" => false,
-        "error" => "Nenhum arquivo recebido."
-    ]);
+ini_set(
+    "log_errors",
+    "1"
+);
+
+error_reporting(
+    E_ALL
+);
+
+set_time_limit(
+    300
+);
+
+
+function responder(
+    array $dados,
+    int $codigo = 200
+): void {
+
+    http_response_code(
+        $codigo
+    );
+
+    echo json_encode(
+        $dados,
+        JSON_UNESCAPED_UNICODE |
+        JSON_UNESCAPED_SLASHES
+    );
+
     exit;
 }
 
-$tempDir = __DIR__ . "/temp/";
 
-if (!is_dir($tempDir)) {
-    mkdir($tempDir, 0777, true);
+if (
+    !isset(
+        $_FILES["mediaFile"]
+    )
+) {
+
+    responder([
+        "success" => false,
+        "error" => "Nenhum arquivo recebido."
+    ], 400);
 }
+
+
+$tempDir =
+    __DIR__
+    .
+    DIRECTORY_SEPARATOR
+    .
+    "temp";
+
+
+if (
+    !is_dir(
+        $tempDir
+    )
+    &&
+    !mkdir(
+        $tempDir,
+        0777,
+        true
+    )
+) {
+
+    responder([
+        "success" => false,
+        "error" => "Não foi possível criar a pasta temporária."
+    ], 500);
+}
+
 
 $postFields = [];
 
-$total = count($_FILES["mediaFile"]["name"]);
+$temporarios = [];
 
-for ($i = 0; $i < $total; $i++) {
 
-    $tmp = $_FILES["mediaFile"]["tmp_name"][$i];
-    $nome = basename($_FILES["mediaFile"]["name"][$i]);
+$nomes =
+    $_FILES[
+        "mediaFile"
+    ]["name"];
 
-    $destino = $tempDir . uniqid() . "_" . $nome;
 
-    if (!move_uploaded_file($tmp, $destino)) {
+if (
+    !is_array(
+        $nomes
+    )
+) {
 
-        echo json_encode([
+    $nomes = [
+        $nomes
+    ];
+}
+
+
+$total =
+    count(
+        $nomes
+    );
+
+
+for (
+    $i = 0;
+    $i < $total;
+    $i++
+) {
+
+    $erroUpload =
+        is_array(
+            $_FILES[
+                "mediaFile"
+            ]["error"]
+        )
+            ?
+            $_FILES[
+                "mediaFile"
+            ]["error"][$i]
+            :
+            $_FILES[
+                "mediaFile"
+            ]["error"];
+
+
+    if (
+        $erroUpload
+        !==
+        UPLOAD_ERR_OK
+    ) {
+
+        responder([
+            "success" => false,
+            "error" => "Erro ao receber um dos arquivos.",
+            "codigo_upload" => $erroUpload
+        ], 400);
+    }
+
+
+    $tmp =
+        is_array(
+            $_FILES[
+                "mediaFile"
+            ]["tmp_name"]
+        )
+            ?
+            $_FILES[
+                "mediaFile"
+            ]["tmp_name"][$i]
+            :
+            $_FILES[
+                "mediaFile"
+            ]["tmp_name"];
+
+
+    $nome =
+        basename(
+            $nomes[$i]
+        );
+
+
+    $destino =
+        $tempDir
+        .
+        DIRECTORY_SEPARATOR
+        .
+        uniqid(
+            "analise_",
+            true
+        )
+        .
+        "_"
+        .
+        $nome;
+
+
+    if (
+        !move_uploaded_file(
+            $tmp,
+            $destino
+        )
+    ) {
+
+        foreach (
+            $temporarios
+            as $arquivoTemp
+        ) {
+
+            @unlink(
+                $arquivoTemp
+            );
+        }
+
+
+        responder([
             "success" => false,
             "error" => "Erro ao salvar: " . $nome
-        ]);
-        exit;
+        ], 500);
     }
 
-    
-    $postFields["mediaFile[$i]"] = curl_file_create($destino);
+
+    $temporarios[] =
+        $destino;
+
+
+    $postFields[
+        "mediaFile[$i]"
+    ] = new CURLFile(
+        $destino,
+        mime_content_type(
+            $destino
+        )
+        ?: "application/octet-stream",
+        $nome
+    );
 }
 
-$curl = curl_init();
 
-curl_setopt_array($curl, [
+if (
+    !function_exists(
+        "curl_init"
+    )
+) {
 
-    CURLOPT_URL => "http://127.0.0.1:5000/analisar",
-    CURLOPT_POST => true,
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_TIMEOUT => 300,
-    CURLOPT_CONNECTTIMEOUT => 30,
-    CURLOPT_POSTFIELDS => $postFields
+    foreach (
+        $temporarios
+        as $arquivoTemp
+    ) {
 
-]);
+        @unlink(
+            $arquivoTemp
+        );
+    }
 
-$resposta = curl_exec($curl);
 
-if ($resposta === false) {
-
-    echo json_encode([
+    responder([
         "success" => false,
-        "error" => curl_error($curl)
-    ]);
-
-
-    foreach ($postFields as $arquivo) {
-        @unlink($arquivo->getFilename());
-    }
-
-    exit;
+        "error" => "A extensão cURL não está habilitada no PHP."
+    ], 500);
 }
 
-curl_close($curl);
 
-foreach ($postFields as $arquivo) {
-    @unlink($arquivo->getFilename());
+$curl =
+    curl_init();
+
+
+curl_setopt_array(
+    $curl,
+    [
+        CURLOPT_URL =>
+            "http://127.0.0.1:5000/analisar",
+
+        CURLOPT_POST =>
+            true,
+
+        CURLOPT_RETURNTRANSFER =>
+            true,
+
+        CURLOPT_TIMEOUT =>
+            300,
+
+        CURLOPT_CONNECTTIMEOUT =>
+            30,
+
+        CURLOPT_POSTFIELDS =>
+            $postFields,
+
+        CURLOPT_HTTPHEADER => [
+            "Accept: application/json"
+        ]
+    ]
+);
+
+
+$resposta =
+    curl_exec(
+        $curl
+    );
+
+
+$erroCurl =
+    curl_error(
+        $curl
+    );
+
+
+$codigoHttp =
+    curl_getinfo(
+        $curl,
+        CURLINFO_HTTP_CODE
+    );
+
+
+curl_close(
+    $curl
+);
+
+
+foreach (
+    $temporarios
+    as $arquivoTemp
+) {
+
+    @unlink(
+        $arquivoTemp
+    );
 }
 
-$json = json_decode($resposta, true);
 
-if ($json === null) {
+if (
+    $resposta
+    ===
+    false
+) {
 
-    echo json_encode([
+    responder([
+        "success" => false,
+        "error" => (
+            "Falha ao comunicar com o servidor de tradução."
+        ),
+        "detalhes" => $erroCurl
+    ], 502);
+}
+
+
+$json =
+    json_decode(
+        $resposta,
+        true
+    );
+
+
+if (
+    !is_array(
+        $json
+    )
+) {
+
+    responder([
         "success" => false,
         "error" => "Resposta inválida do Flask.",
         "resposta" => $resposta
-    ]);
-
-    exit;
+    ], 502);
 }
 
-echo json_encode($json);
 
-?>
+if (
+    $codigoHttp < 200
+    ||
+    $codigoHttp >= 300
+) {
+
+    responder(
+        $json,
+        $codigoHttp > 0
+            ? $codigoHttp
+            : 502
+    );
+}
+
+
+responder(
+    $json,
+    200
+);

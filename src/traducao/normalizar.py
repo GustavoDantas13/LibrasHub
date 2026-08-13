@@ -10,74 +10,139 @@ BASE_DIR = os.path.dirname(
     )
 )
 
-SCALER_MEAN_PATH = os.path.join(
+
+CAMINHO_MEAN = os.path.join(
     BASE_DIR,
     "scaler_mean.npy"
 )
 
-SCALER_SCALE_PATH = os.path.join(
+
+CAMINHO_SCALE = os.path.join(
     BASE_DIR,
     "scaler_scale.npy"
 )
 
 
+CAMINHO_VERSAO = os.path.join(
+    BASE_DIR,
+    "modelo_ativo.version"
+)
+
+
 scaler_mean = None
 scaler_scale = None
+versao_scaler = None
+
+
+def scaler_disponivel():
+
+    return (
+        os.path.isfile(
+            CAMINHO_MEAN
+        )
+        and
+        os.path.isfile(
+            CAMINHO_SCALE
+        )
+    )
+
+
+def obter_versao():
+
+    if not os.path.isfile(
+        CAMINHO_VERSAO
+    ):
+        return "sem-versao"
+
+    try:
+
+        with open(
+            CAMINHO_VERSAO,
+            "r",
+            encoding="utf-8"
+        ) as arquivo:
+
+            return arquivo.read().strip()
+
+    except OSError:
+
+        return "sem-versao"
 
 
 def carregar_scaler():
 
     global scaler_mean
     global scaler_scale
+    global versao_scaler
+
+    versao_atual = obter_versao()
 
     if (
-        scaler_mean is not None and
+        scaler_mean is not None
+        and
         scaler_scale is not None
+        and
+        versao_scaler == versao_atual
     ):
         return
 
-    if not os.path.isfile(SCALER_MEAN_PATH):
+    if not os.path.isfile(
+        CAMINHO_MEAN
+    ):
+
         raise RuntimeError(
             "O arquivo scaler_mean.npy não foi encontrado. "
-            "Treine o modelo antes de realizar traduções."
+            "Treine ou ative um modelo antes de realizar traduções."
         )
 
-    if not os.path.isfile(SCALER_SCALE_PATH):
+    if not os.path.isfile(
+        CAMINHO_SCALE
+    ):
+
         raise RuntimeError(
             "O arquivo scaler_scale.npy não foi encontrado. "
-            "Treine o modelo antes de realizar traduções."
+            "Treine ou ative um modelo antes de realizar traduções."
         )
 
-    scaler_mean = np.load(
-        SCALER_MEAN_PATH
+    novo_mean = np.load(
+        CAMINHO_MEAN
     )
 
-    scaler_scale = np.load(
-        SCALER_SCALE_PATH
+    novo_scale = np.load(
+        CAMINHO_SCALE
     )
 
-    scaler_scale[
-        scaler_scale == 0
+    novo_scale[
+        novo_scale == 0
     ] = 1
+
+    scaler_mean = novo_mean
+    scaler_scale = novo_scale
+    versao_scaler = versao_atual
 
 
 def recarregar_scaler():
 
     global scaler_mean
     global scaler_scale
+    global versao_scaler
 
     scaler_mean = None
     scaler_scale = None
+    versao_scaler = None
 
     carregar_scaler()
 
 
-def scaler_disponivel():
+def descarregar_scaler():
 
-    return (
-        os.path.isfile(SCALER_MEAN_PATH) and
-        os.path.isfile(SCALER_SCALE_PATH)
-    )
+    global scaler_mean
+    global scaler_scale
+    global versao_scaler
+
+    scaler_mean = None
+    scaler_scale = None
+    versao_scaler = None
 
 
 def normalizar_mao(mao):
@@ -86,8 +151,10 @@ def normalizar_mao(mao):
     middle = mao.landmark[9]
 
     escala = np.sqrt(
-        (middle.x - wrist.x) ** 2 +
-        (middle.y - wrist.y) ** 2 +
+        (middle.x - wrist.x) ** 2
+        +
+        (middle.y - wrist.y) ** 2
+        +
         (middle.z - wrist.z) ** 2
     )
 
