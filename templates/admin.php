@@ -1,6 +1,4 @@
 
-
-
 <?php
 
 session_start();
@@ -61,6 +59,135 @@ $TIPOS_VALIDOS = [
     "Usuário Comunitário",
     "Administrador"
 ];
+
+
+
+if (
+    isset($_GET["ajax"]) &&
+    $_GET["ajax"] === "listar_gestos"
+) {
+
+    header("Content-Type: application/json; charset=utf-8");
+
+    if (!$ehAdmin) {
+        http_response_code(403);
+        echo json_encode([
+            "success" => false,
+            "error" => "Acesso negado."
+        ]);
+        exit;
+    }
+
+    try {
+
+        $gestos = $pdo->query("
+            SELECT
+                g.id_gesto,
+                g.nm_gesto,
+                g.dataset,
+                g.id_administrador,
+                u.nm_usuario AS administrador
+            FROM gesto g
+            INNER JOIN usuario u
+                ON u.id_usuario = g.id_administrador
+            ORDER BY g.nm_gesto ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            "success" => true,
+            "total" => count($gestos),
+            "gestos" => $gestos
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    } catch (PDOException $erroBanco) {
+
+        http_response_code(500);
+
+        echo json_encode([
+            "success" => false,
+            "error" => "Não foi possível atualizar a lista de gestos."
+        ]);
+    }
+
+    exit;
+}
+
+
+if (
+    isset($_GET["ajax"]) &&
+    $_GET["ajax"] === "listar_modelos"
+) {
+
+    header("Content-Type: application/json; charset=utf-8");
+
+    if (!$ehAdmin) {
+        http_response_code(403);
+        echo json_encode([
+            "success" => false,
+            "error" => "Acesso negado."
+        ]);
+        exit;
+    }
+
+    try {
+
+        $modelos = $pdo->query("
+            SELECT
+                m.id_modelo,
+                m.id_administrador,
+                m.dt_modelo,
+                m.labels,
+                m.modelo_gesto,
+                m.scaler_mean,
+                m.scaler_scale,
+                m.ativo,
+                u.nm_usuario AS administrador
+            FROM modelo_traducao m
+            INNER JOIN usuario u
+                ON u.id_usuario = m.id_administrador
+            ORDER BY m.dt_modelo DESC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($modelos as &$modeloItem) {
+
+            $modeloItem["id_modelo"] =
+                (int) $modeloItem["id_modelo"];
+
+            $modeloItem["id_administrador"] =
+                (int) $modeloItem["id_administrador"];
+
+            $modeloItem["ativo"] =
+                (int) $modeloItem["ativo"];
+
+            $modeloItem["data_formatada"] =
+                date(
+                    "d/m/Y H:i",
+                    strtotime(
+                        $modeloItem["dt_modelo"]
+                    )
+                );
+        }
+
+        unset($modeloItem);
+
+        echo json_encode([
+            "success" => true,
+            "total" => count($modelos),
+            "modelos" => $modelos
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    } catch (PDOException $erroBanco) {
+
+        http_response_code(500);
+
+        echo json_encode([
+            "success" => false,
+            "error" => "Não foi possível atualizar o histórico de modelos."
+        ]);
+    }
+
+    exit;
+}
 
 
 /*
@@ -1374,6 +1501,33 @@ if (
         $abaAtiva =
             "gestos";
     }
+}
+
+
+if (
+    $_SERVER["REQUEST_METHOD"] === "POST"
+    &&
+    ($_POST["ajax_request"] ?? "") === "1"
+) {
+
+    header(
+        "Content-Type: application/json; charset=utf-8"
+    );
+
+    $ok =
+        $erro === "";
+
+    if (!$ok) {
+        http_response_code(400);
+    }
+
+    echo json_encode([
+        "success" => $ok,
+        "message" => $sucesso,
+        "error" => $erro
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    exit;
 }
 
 
@@ -2950,6 +3104,13 @@ $inicial =
                                 </button>
 
 
+                                <button type="button" id="btnCancelarDataset" class="btn-danger-outline" disabled>
+
+                                    Cancelar criação
+
+                                </button>
+
+
                             </div>
 
 
@@ -2971,7 +3132,7 @@ $inicial =
                             </div>
 
 
-                            <div class="count-badge">
+                            <div class="count-badge" id="gestureCount">
 
                                 <?= count(
                                     $gestosLista
@@ -2984,7 +3145,7 @@ $inicial =
 
 
 
-                        <div class="gesture-list">
+                        <div class="gesture-list" id="gestureList">
 
 
                             <?php if (
@@ -3545,7 +3706,7 @@ $inicial =
                         </div>
 
 
-                        <div class="count-badge">
+                        <div class="count-badge" id="modelCount">
 
                             <?= count(
                                 $modelosLista
@@ -3557,6 +3718,8 @@ $inicial =
                     </div>
 
 
+
+                    <div id="modelList">
 
                     <?php if (
                         empty(
@@ -3750,11 +3913,7 @@ $inicial =
                                     <form
                                         method="POST"
                                         action="admin.php"
-                                        onsubmit="
-                                            return confirm(
-                                                'Deseja usar este modelo nas traduções?'
-                                            );
-                                        "
+                                        class="form-ativar-modelo"
                                     >
 
                                         <input
@@ -4879,9 +5038,20 @@ $inicial =
                     "btnLimparDataset"
                 );
 
+            const btnCancelarDataset =
+                document.getElementById(
+                    "btnCancelarDataset"
+                );
+
 
             let arquivosSelecionados =
                 [];
+
+            let controllerDataset =
+                null;
+
+            let cancelamentoDatasetSolicitado =
+                false;
 
 
             function formatarTamanho(
@@ -5246,12 +5416,16 @@ $inicial =
 
                 fileInput.disabled =
                     bloqueado;
+
+                btnCancelarDataset.disabled =
+                    !bloqueado;
             }
 
 
             async function registrarGesto(
                 nomeGesto,
-                caminhoDataset
+                caminhoDataset,
+                signal = null
             ) {
 
                 const corpo =
@@ -5279,7 +5453,10 @@ $inicial =
                             },
 
                             body:
-                                corpo.toString()
+                                corpo.toString(),
+
+                            signal:
+                                signal
                         }
                     );
 
@@ -5327,6 +5504,13 @@ $inicial =
 
                         return;
                     }
+
+
+                    cancelamentoDatasetSolicitado =
+                        false;
+
+                    controllerDataset =
+                        new AbortController();
 
 
                     bloquearDataset(
@@ -5390,7 +5574,9 @@ $inicial =
                                     "ajax/criar_dataset.php",
                                     {
                                         method: "POST",
-                                        body: formData
+                                        body: formData,
+                                        signal:
+                                            controllerDataset.signal
                                     }
                                 );
 
@@ -5447,7 +5633,10 @@ $inicial =
                                     },
 
                                     body:
-                                        corpoFinal.toString()
+                                        corpoFinal.toString(),
+
+                                    signal:
+                                        controllerDataset.signal
                                 }
                             );
 
@@ -5485,7 +5674,8 @@ $inicial =
                         const registro =
                             await registrarGesto(
                                 nomeDataset,
-                                dadosFinais.dataset
+                                dadosFinais.dataset,
+                                controllerDataset.signal
                             );
 
 
@@ -5500,6 +5690,13 @@ $inicial =
                                 +
                                 "o gesto não pôde ser cadastrado."
                             );
+                        }
+
+
+                        if (
+                            typeof window.atualizarListaGestos === "function"
+                        ) {
+                            await window.atualizarListaGestos();
                         }
 
 
@@ -5532,6 +5729,16 @@ $inicial =
                     } catch (erro) {
 
 
+                        if (
+                            cancelamentoDatasetSolicitado
+                            ||
+                            erro.name === "AbortError"
+                        ) {
+
+                            return;
+                        }
+
+
                         resultTextDataset.innerHTML = `
                 <strong>
                     Erro durante a criação do dataset.
@@ -5548,9 +5755,177 @@ $inicial =
                     } finally {
 
 
+                        controllerDataset =
+                            null;
+
+
                         bloquearDataset(
                             false
                         );
+                    }
+                }
+            );
+
+
+            btnCancelarDataset.addEventListener(
+                "click",
+                async () => {
+
+
+                    if (
+                        btnCancelarDataset.disabled
+                    ) {
+
+                        return;
+                    }
+
+
+                    if (
+                        !confirm(
+                            "Deseja cancelar a criação do dataset? "
+                            +
+                            "Os arquivos temporários enviados serão removidos."
+                        )
+                    ) {
+
+                        return;
+                    }
+
+
+                    cancelamentoDatasetSolicitado =
+                        true;
+
+
+                    btnCancelarDataset.disabled =
+                        true;
+
+
+                    if (
+                        controllerDataset
+                    ) {
+
+                        controllerDataset.abort();
+                    }
+
+
+                    resultTextDataset.innerHTML = `
+                        <strong>
+                            Cancelando criação do dataset...
+                        </strong>
+
+                        <br><br>
+
+                        Removendo arquivos temporários.
+                    `;
+
+
+                    try {
+
+
+                        const resposta =
+                            await fetch(
+                                "ajax/cancelar_dataset.php",
+                                {
+                                    method: "POST",
+
+                                    headers: {
+                                        "Content-Type":
+                                            "application/x-www-form-urlencoded; charset=UTF-8"
+                                    },
+
+                                    body:
+                                        new URLSearchParams({
+                                            cancelar: "1"
+                                        }).toString()
+                                }
+                            );
+
+
+                        const dados =
+                            await lerJsonSeguro(
+                                resposta
+                            );
+
+
+                        if (
+                            !resposta.ok
+                            ||
+                            !dados.success
+                        ) {
+
+                            throw new Error(
+                                dados.error
+                                ??
+                                "Não foi possível remover os arquivos temporários."
+                            );
+                        }
+
+
+                        arquivosSelecionados =
+                            [];
+
+
+                        fileInput.value =
+                            "";
+
+
+                        listaArquivos.innerHTML =
+                            "";
+
+
+                        document
+                            .getElementById(
+                                "datasetNome"
+                            )
+                            .value =
+                            "";
+
+
+                        atualizarResumoDataset();
+
+
+                        resultTextDataset.innerHTML = `
+                            <strong>
+                                Criação do dataset cancelada.
+                            </strong>
+
+                            <br><br>
+
+                            A pasta temporária libraas foi removida.
+                        `;
+
+
+                    } catch (erro) {
+
+
+                        resultTextDataset.innerHTML = `
+                            <strong>
+                                O processamento foi interrompido,
+                                mas ocorreu um erro na limpeza.
+                            </strong>
+
+                            <br><br>
+
+                            ${escaparHtml(
+                                erro.message
+                            )}
+                        `;
+
+
+                    } finally {
+
+
+                        controllerDataset =
+                            null;
+
+
+                        bloquearDataset(
+                            false
+                        );
+
+
+                        cancelamentoDatasetSolicitado =
+                            false;
                     }
                 }
             );
@@ -6870,13 +7245,11 @@ $inicial =
                                 )
                             );
 
-                            setTimeout(
-                                () => {
-                                    window.location.href =
-                                        "admin.php?aba=treinamento";
-                                },
-                                900
-                            );
+                            if (
+                                typeof window.atualizarListaModelos === "function"
+                            ) {
+                                await window.atualizarListaModelos();
+                            }
 
                         } catch (erroRegistro) {
 
@@ -7186,6 +7559,580 @@ $inicial =
 
     <?php endif; ?>
 
+
+
+
+    <script>
+
+        (function () {
+
+            function escaparValor(valor) {
+
+                return String(valor ?? "")
+                    .replaceAll("&", "&amp;")
+                    .replaceAll("<", "&lt;")
+                    .replaceAll(">", "&gt;")
+                    .replaceAll('"', "&quot;")
+                    .replaceAll("'", "&#039;");
+            }
+
+
+            function nomeArquivo(caminho) {
+
+                const partes =
+                    String(caminho ?? "")
+                        .replaceAll("\\", "/")
+                        .split("/");
+
+                return partes[
+                    partes.length - 1
+                ] || "";
+            }
+
+
+            window.atualizarListaGestos =
+                async function () {
+
+                    const lista =
+                        document.getElementById(
+                            "gestureList"
+                        );
+
+                    const contador =
+                        document.getElementById(
+                            "gestureCount"
+                        );
+
+
+                    if (!lista) {
+                        return;
+                    }
+
+
+                    const resposta =
+                        await fetch(
+                            "admin.php?ajax=listar_gestos",
+                            {
+                                cache: "no-store"
+                            }
+                        );
+
+
+                    const dados =
+                        await resposta.json();
+
+
+                    if (
+                        !resposta.ok
+                        ||
+                        !dados.success
+                    ) {
+
+                        throw new Error(
+                            dados.error
+                            ??
+                            "Não foi possível atualizar a lista de gestos."
+                        );
+                    }
+
+
+                    const gestos =
+                        Array.isArray(
+                            dados.gestos
+                        )
+                            ? dados.gestos
+                            : [];
+
+
+                    if (contador) {
+
+                        contador.textContent =
+                            String(
+                                gestos.length
+                            );
+                    }
+
+
+                    if (
+                        gestos.length === 0
+                    ) {
+
+                        lista.innerHTML = `
+                            <div class="empty-state">
+                                Nenhum gesto cadastrado.
+                            </div>
+                        `;
+
+                        return;
+                    }
+
+
+                    lista.innerHTML =
+                        gestos
+                            .map(
+                                gesto => {
+
+                                    const dataset =
+                                        gesto.dataset
+                                            ? `<strong>${escaparValor(
+                                                gesto.dataset
+                                            )}</strong>`
+                                            : `<span class="muted">Não informado</span>`;
+
+
+                                    return `
+                                        <article class="gesture-card">
+
+                                            <div class="gesture-icon">
+                                                <i class="fa-solid fa-hands"></i>
+                                            </div>
+
+                                            <div class="gesture-info">
+
+                                                <div class="gesture-name">
+                                                    ${escaparValor(
+                                                        gesto.nm_gesto
+                                                    )}
+                                                </div>
+
+                                                <div class="gesture-meta">
+                                                    Cadastrado por
+                                                    ${escaparValor(
+                                                        gesto.administrador
+                                                    )}
+                                                </div>
+
+                                                <div class="gesture-meta">
+                                                    Dataset:
+                                                    ${dataset}
+                                                </div>
+
+                                            </div>
+
+                                            <form
+                                                method="POST"
+                                                action="admin.php"
+                                                onsubmit="return confirm('Deseja remover este gesto?');"
+                                            >
+                                                <input
+                                                    type="hidden"
+                                                    name="acao"
+                                                    value="excluir_gesto"
+                                                >
+
+                                                <input
+                                                    type="hidden"
+                                                    name="aba_atual"
+                                                    value="gestos"
+                                                >
+
+                                                <input
+                                                    type="hidden"
+                                                    name="gesto_id"
+                                                    value="${Number(
+                                                        gesto.id_gesto
+                                                    )}"
+                                                >
+
+                                                <button
+                                                    type="submit"
+                                                    class="icon-btn-sm"
+                                                    title="Excluir gesto"
+                                                >
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            </form>
+
+                                        </article>
+                                    `;
+                                }
+                            )
+                            .join("");
+                };
+
+
+            window.atualizarListaModelos =
+                async function () {
+
+                    const lista =
+                        document.getElementById(
+                            "modelList"
+                        );
+
+                    const contador =
+                        document.getElementById(
+                            "modelCount"
+                        );
+
+
+                    if (!lista) {
+                        return;
+                    }
+
+
+                    const resposta =
+                        await fetch(
+                            "admin.php?ajax=listar_modelos",
+                            {
+                                cache: "no-store"
+                            }
+                        );
+
+
+                    const dados =
+                        await resposta.json();
+
+
+                    if (
+                        !resposta.ok
+                        ||
+                        !dados.success
+                    ) {
+
+                        throw new Error(
+                            dados.error
+                            ??
+                            "Não foi possível atualizar o histórico de modelos."
+                        );
+                    }
+
+
+                    const modelos =
+                        Array.isArray(
+                            dados.modelos
+                        )
+                            ? dados.modelos
+                            : [];
+
+
+                    if (contador) {
+
+                        contador.textContent =
+                            String(
+                                modelos.length
+                            );
+                    }
+
+
+                    if (
+                        modelos.length === 0
+                    ) {
+
+                        lista.innerHTML = `
+                            <div class="admin-card">
+                                <div class="empty-state">
+                                    Nenhum modelo registrado.
+                                </div>
+                            </div>
+                        `;
+
+                        return;
+                    }
+
+
+                    lista.innerHTML =
+                        modelos
+                            .map(
+                                modelo => {
+
+                                    const ativo =
+                                        Number(
+                                            modelo.ativo
+                                        ) === 1;
+
+
+                                    const badge =
+                                        ativo
+                                            ? `
+                                                <div
+                                                    class="count-badge"
+                                                    style="
+                                                        margin-top:8px;
+                                                        display:inline-flex;
+                                                        align-items:center;
+                                                        gap:6px;
+                                                    "
+                                                >
+                                                    <i class="fa-solid fa-circle-check"></i>
+                                                    Em uso
+                                                </div>
+                                            `
+                                            : "";
+
+
+                                    const arquivos = [
+                                        ["Labels", modelo.labels],
+                                        ["Modelo", modelo.modelo_gesto],
+                                        ["Scaler Mean", modelo.scaler_mean],
+                                        ["Scaler Scale", modelo.scaler_scale]
+                                    ]
+                                        .map(
+                                            item => `
+                                                <div class="model-file">
+
+                                                    <div class="model-file-label">
+                                                        ${escaparValor(
+                                                            item[0]
+                                                        )}
+                                                    </div>
+
+                                                    <div
+                                                        class="model-file-value"
+                                                        title="${escaparValor(
+                                                            item[1]
+                                                        )}"
+                                                    >
+                                                        ${escaparValor(
+                                                            nomeArquivo(
+                                                                item[1]
+                                                            )
+                                                        )}
+                                                    </div>
+
+                                                </div>
+                                            `
+                                        )
+                                        .join("");
+
+
+                                    const acoes =
+                                        ativo
+                                            ? `
+                                                <button
+                                                    type="button"
+                                                    class="btn-secondary"
+                                                    disabled
+                                                >
+                                                    <i class="fa-solid fa-circle-check"></i>
+                                                    Modelo em uso
+                                                </button>
+                                            `
+                                            : `
+                                                <form
+                                                    method="POST"
+                                                    action="admin.php"
+                                                    class="form-ativar-modelo"
+                                                >
+                                                    <input
+                                                        type="hidden"
+                                                        name="acao"
+                                                        value="ativar_modelo"
+                                                    >
+
+                                                    <input
+                                                        type="hidden"
+                                                        name="aba_atual"
+                                                        value="treinamento"
+                                                    >
+
+                                                    <input
+                                                        type="hidden"
+                                                        name="modelo_id"
+                                                        value="${Number(
+                                                            modelo.id_modelo
+                                                        )}"
+                                                    >
+
+                                                    <button
+                                                        type="submit"
+                                                        class="btn-primary"
+                                                    >
+                                                        <i class="fa-solid fa-rotate"></i>
+                                                        Usar este modelo
+                                                    </button>
+                                                </form>
+
+                                                <form
+                                                    method="POST"
+                                                    action="admin.php"
+                                                    onsubmit="return confirm('Deseja excluir permanentemente este modelo e seus arquivos?');"
+                                                >
+                                                    <input
+                                                        type="hidden"
+                                                        name="acao"
+                                                        value="excluir_modelo"
+                                                    >
+
+                                                    <input
+                                                        type="hidden"
+                                                        name="aba_atual"
+                                                        value="treinamento"
+                                                    >
+
+                                                    <input
+                                                        type="hidden"
+                                                        name="modelo_id"
+                                                        value="${Number(
+                                                            modelo.id_modelo
+                                                        )}"
+                                                    >
+
+                                                    <button
+                                                        type="submit"
+                                                        class="btn-danger-outline"
+                                                    >
+                                                        <i class="fa-solid fa-trash"></i>
+                                                        Excluir modelo
+                                                    </button>
+                                                </form>
+                                            `;
+
+
+                                    return `
+                                        <article class="model-card">
+
+                                            <div class="model-head">
+
+                                                <div>
+
+                                                    <div class="model-id">
+                                                        Modelo #${Number(
+                                                            modelo.id_modelo
+                                                        )}
+                                                    </div>
+
+                                                    ${badge}
+
+                                                    <div class="model-date">
+                                                        Treinado por
+                                                        ${escaparValor(
+                                                            modelo.administrador
+                                                        )}
+                                                    </div>
+
+                                                </div>
+
+                                                <div class="model-date">
+                                                    ${escaparValor(
+                                                        modelo.data_formatada
+                                                    )}
+                                                </div>
+
+                                            </div>
+
+                                            <div class="model-files">
+                                                ${arquivos}
+                                            </div>
+
+                                            <div
+                                                class="training-actions"
+                                                style="
+                                                    margin-top:16px;
+                                                    justify-content:flex-end;
+                                                    flex-wrap:wrap;
+                                                "
+                                            >
+                                                ${acoes}
+                                            </div>
+
+                                        </article>
+                                    `;
+                                }
+                            )
+                            .join("");
+                };
+
+
+            document.addEventListener(
+                "submit",
+                async evento => {
+
+                    const form =
+                        evento.target.closest(
+                            ".form-ativar-modelo"
+                        );
+
+
+                    if (!form) {
+                        return;
+                    }
+
+
+                    evento.preventDefault();
+
+
+                    if (
+                        !confirm(
+                            "Deseja usar este modelo nas traduções?"
+                        )
+                    ) {
+                        return;
+                    }
+
+
+                    const botao =
+                        form.querySelector(
+                            'button[type="submit"]'
+                        );
+
+
+                    if (botao) {
+                        botao.disabled = true;
+                    }
+
+
+                    try {
+
+                        const formData =
+                            new FormData(
+                                form
+                            );
+
+
+                        formData.set(
+                            "ajax_request",
+                            "1"
+                        );
+
+
+                        const resposta =
+                            await fetch(
+                                "admin.php",
+                                {
+                                    method: "POST",
+                                    body: formData
+                                }
+                            );
+
+
+                        const dados =
+                            await resposta.json();
+
+
+                        if (
+                            !resposta.ok
+                            ||
+                            !dados.success
+                        ) {
+
+                            throw new Error(
+                                dados.error
+                                ??
+                                "Não foi possível ativar o modelo."
+                            );
+                        }
+
+
+                        await window.atualizarListaModelos();
+
+
+                    } catch (erro) {
+
+                        alert(
+                            erro.message
+                        );
+
+
+                        if (botao) {
+                            botao.disabled = false;
+                        }
+                    }
+                }
+            );
+
+        })();
+
+    </script>
 
 
     <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu" aria-controls="menuLateral" aria-expanded="false">
