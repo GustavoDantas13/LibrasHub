@@ -802,7 +802,7 @@ img {
 <body>
 
 <!-- ══ SIDEBAR ══════════════════════════════════════════ -->
-<aside class="sidebar" id="sidebarNav">
+<aside class="sidebar" id="sidebarNav" aria-label="Navegação principal">
   <div class="sidebar-top">
     <div class="logo">
       <img src="../static/images/librashub-logo.png" alt="LibrasHub" class="logo-img">
@@ -834,33 +834,33 @@ img {
 </aside>
 
 <!-- ══ CONTEÚDO PRINCIPAL ══════════════════════════════ -->
-<div class="content">
+<div class="content" id="conteudo-principal" role="main">
 
   <!-- ── HERO ────────────────────────────────────────── -->
   <div class="hero reveal">
     <div class="hero-text">
       <div class="hero-label">
         <i class="fa-solid fa-hand-dots"></i>
-        Guia da plataforma
+        Tecnologia assistiva com IA
       </div>
-      <h1>Tudo que você<br>precisa para usar o<br><em>LibrasHub</em></h1>
+      <h1>Tradução de Libras<br>e comunidade<br><em>em um só lugar</em></h1>
       <p class="hero-desc">
-        Traduza LIBRAS em tempo real com sua câmera, envie arquivos para análise e participe da comunidade — tudo num só lugar.
+        O LibrasHub usa tecnologia assistiva para aproximar pessoas surdas e ouvintes. Traduza sinais, envie conteúdos para análise e participe de uma comunidade criada para tornar a comunicação mais acessível.
       </p>
       <div class="hero-cta">
         <a class="btn-cta btn-cta-primary" href="leitor.php">
-          <i class="fa-solid fa-video"></i> Abrir Leitor
+          <i class="fa-solid fa-video"></i> Iniciar Tradução
         </a>
-        <a class="btn-cta btn-cta-ghost" href="upload.php">
-          <i class="fa-solid fa-upload"></i> Fazer Upload
+        <a class="btn-cta btn-cta-ghost" href="comunidade.php">
+          <i class="fa-solid fa-users"></i> Acessar Comunidade
         </a>
       </div>
     </div>
     <div class="hero-visual">
       <div class="hero-visual-glow"></div>
-      <div class="hero-visual-badge">● Ao vivo</div>
+      <div class="hero-visual-badge">● IA + Libras</div>
       <div class="hero-visual-icon"><i class="fa-solid fa-hands" style="color: #fdbe00;"></i></div>
-      <div class="hero-visual-caption">Tradução em tempo real</div>
+      <div class="hero-visual-caption">Tecnologia para uma comunicação mais acessível</div>
     </div>
   </div>
 
@@ -871,15 +871,15 @@ img {
     <div class="stats-inner">
       <div class="stat-item reveal reveal-delay-1">
         <div class="stat-num">3</div>
-        <div class="stat-label">Ferramentas integradas</div>
+        <div class="stat-label">Recursos integrados em uma plataforma</div>
       </div>
       <div class="stat-item reveal reveal-delay-2">
-        <div class="stat-num">100%</div>
-        <div class="stat-label">Gratuito para começar</div>
+        <div class="stat-num">IA</div>
+        <div class="stat-label">Processamento inteligente de sinais</div>
       </div>
       <div class="stat-item reveal reveal-delay-3">
-        <div class="stat-num">0</div>
-        <div class="stat-label">Downloads necessários</div>
+        <div class="stat-num">Web</div>
+        <div class="stat-label">Acesso direto pelo navegador</div>
       </div>
     </div>
   </div>
@@ -887,44 +887,44 @@ img {
   <!-- ── SEÇÃO: LEITOR ────────────────────────────────── -->
   <div class="section">
     <div class="reveal">
-      <div class="eyebrow">Ferramenta 1</div>
-      <div class="section-h2">Leitor de LIBRAS</div>
-      <div class="section-desc">Câmera ligada, tradução instantânea. Nenhum cadastro necessário.</div>
+      <div class="eyebrow">Tradução com IA</div>
+      <div class="section-h2">Leitor de Libras em Tempo Real</div>
+      <div class="section-desc">Use a câmera para transformar sinais reconhecidos pelo sistema em texto, formando uma frase conforme a tradução acontece.</div>
     </div>
 
     <div class="tool-block reveal">
       <div class="tool-visual">
-        <div class="tool-badge">Sem login</div>
+        <div class="tool-badge">Tempo real</div>
         <div class="tool-visual-ico"><i class="fa-solid fa-video" style="color: #fdbe00;"></i>
 </div>
-        <div class="tool-visual-lbl">Câmera em tempo real</div>
+        <div class="tool-visual-lbl">Captura e interpretação de sinais</div>
       </div>
       <div class="tool-text">
-        <div class="tool-chip">Acesso livre</div>
-        <div class="tool-h3">Como usar o Leitor</div>
+        <div class="tool-chip">Tecnologia assistiva</div>
+        <div class="tool-h3">Da câmera para a comunicação</div>
         <p class="tool-p">
-          O Leitor captura seus gestos em LIBRAS pela câmera do dispositivo e converte em texto e voz na hora. Roda direto no navegador — sem instalar nada.
+          O Leitor utiliza a câmera do dispositivo para capturar os sinais e enviar os quadros ao motor de tradução do LibrasHub. A inteligência artificial analisa os padrões reconhecidos e devolve o resultado em texto.
         </p>
         <div class="tool-steps">
           <div class="tool-step">
             <div class="step-num green">1</div>
-            <div class="step-txt">Acesse o Leitor e clique em <strong>Ativar Câmera</strong>. Conceda a permissão quando o navegador pedir.</div>
+            <div class="step-txt"><strong>Capture:</strong> abra o Leitor e permita o acesso à câmera do dispositivo.</div>
           </div>
           <div class="tool-step">
             <div class="step-num green">2</div>
-            <div class="step-txt">Posicione as mãos bem visíveis, com boa iluminação. Faça os gestos de forma clara e pausada.</div>
+            <div class="step-txt"><strong>Sinalize:</strong> mantenha as mãos visíveis e faça o sinal de forma clara para facilitar a leitura.</div>
           </div>
           <div class="tool-step">
             <div class="step-num green">3</div>
-            <div class="step-txt">A <strong>Palavra Atual</strong> aparece conforme o sinal é detectado, montando a <strong>Frase Completa</strong> automaticamente.</div>
+            <div class="step-txt"><strong>Processe:</strong> o motor de IA analisa a sequência capturada e identifica o sinal reconhecido.</div>
           </div>
           <div class="tool-step">
             <div class="step-num green">4</div>
-            <div class="step-txt">Use <strong>Ler em voz alta</strong> para ouvir a tradução ou <strong>Limpar texto</strong> para recomeçar.</div>
+            <div class="step-txt"><strong>Comunique:</strong> acompanhe a palavra e a frase formada na tela e use a leitura em voz alta quando necessário.</div>
           </div>
         </div>
         <a class="btn-tool btn-tool-green" href="leitor.php">
-          <i class="fa-solid fa-video"></i> Abrir Leitor agora
+          <i class="fa-solid fa-video"></i> Começar tradução agora
         </a>
       </div>
     </div>
@@ -935,39 +935,39 @@ img {
   <!-- ── SEÇÃO: UPLOAD ────────────────────────────────── -->
   <div class="section">
     <div class="reveal">
-      <div class="eyebrow">Ferramenta 2</div>
-      <div class="section-h2">Upload de Arquivos</div>
-      <div class="section-desc">Envie imagens ou vídeos com sinais de LIBRAS e receba a tradução. Sem câmera, sem login.</div>
+      <div class="eyebrow">Análise de mídia</div>
+      <div class="section-h2">Tradução por Upload</div>
+      <div class="section-desc">Já possui uma imagem ou vídeo com sinais de Libras? Envie o arquivo para o sistema analisar sem precisar usar a câmera ao vivo.</div>
     </div>
 
     <div class="tool-block flip reveal">
       <div class="tool-visual">
         <div class="tool-badge">Sem login</div>
         <div class="tool-visual-ico">⬆</div>
-        <div class="tool-visual-lbl">Arraste ou selecione um arquivo</div>
+        <div class="tool-visual-lbl">Imagem ou vídeo para análise</div>
       </div>
       <div class="tool-text">
-        <div class="tool-chip">Acesso livre</div>
-        <div class="tool-h3">Como fazer o Upload</div>
+        <div class="tool-chip">Processamento inteligente</div>
+        <div class="tool-h3">Analise conteúdo já gravado</div>
         <p class="tool-p">
-          Sem câmera disponível ou prefere usar um arquivo já gravado? Arraste a imagem ou vídeo para a área de upload ou clique para selecionar do seu dispositivo.
+          O módulo de Upload permite enviar mídias que já estão no dispositivo. O arquivo segue para o mesmo ecossistema de reconhecimento do LibrasHub, mantendo a tradução centralizada na plataforma.
         </p>
         <div class="tool-steps">
           <div class="tool-step">
             <div class="step-num green">1</div>
-            <div class="step-txt"><strong>Arraste o arquivo</strong> para a área indicada na tela de Upload, ou clique em <strong>Selecionar Arquivo</strong>.</div>
+            <div class="step-txt"><strong>Escolha:</strong> selecione ou arraste a imagem ou vídeo que deseja analisar.</div>
           </div>
           <div class="tool-step">
             <div class="step-num green">2</div>
-            <div class="step-txt">Formatos aceitos: <strong>JPG, PNG</strong> para imagens e <strong>MP4, AVI, MOV</strong> para vídeos. Máx. 20 MB.</div>
+            <div class="step-txt"><strong>Envie:</strong> confira o arquivo selecionado e inicie a tradução pela própria página de Upload.</div>
           </div>
           <div class="tool-step">
             <div class="step-num green">3</div>
-            <div class="step-txt">Aguarde o processamento. A tradução aparece logo abaixo do arquivo enviado.</div>
+            <div class="step-txt"><strong>Receba:</strong> acompanhe o processamento e visualize os sinais reconhecidos pelo sistema.</div>
           </div>
         </div>
         <a class="btn-tool btn-tool-green" href="upload.php">
-          <i class="fa-solid fa-upload"></i> Ir para Upload
+          <i class="fa-solid fa-upload"></i> Traduzir um arquivo
         </a>
       </div>
     </div>
@@ -977,30 +977,30 @@ img {
   <div class="stats-strip">
     <div class="comm-inner">
       <div class="reveal">
-        <div class="eyebrow">Boas práticas</div>
-        <div class="section-h2">Dicas para melhor precisão</div>
-        <div class="section-desc">Pequenos ajustes fazem grande diferença na qualidade da tradução.</div>
+        <div class="eyebrow">Por trás do LibrasHub</div>
+        <div class="section-h2">Tecnologia pensada para acessibilidade</div>
+        <div class="section-desc">O projeto combina reconhecimento visual, inteligência artificial e recursos comunitários para reduzir barreiras de comunicação.</div>
       </div>
       <div class="tips-grid">
         <div class="tip-card reveal reveal-delay-1">
           <span class="tip-ico"><i class="fa-regular fa-lightbulb" style="color: #fdbe00;"></i></span>
-          <div class="tip-title">Iluminação adequada</div>
-          <div class="tip-desc">Use uma fonte de luz frontal. Evite contraluz ou ambientes muito escuros.</div>
+          <div class="tip-title">Visão Computacional</div>
+          <div class="tip-desc">A câmera fornece os quadros usados pelo sistema para localizar e interpretar características dos sinais.</div>
         </div>
         <div class="tip-card reveal reveal-delay-2">
           <span class="tip-ico"><i class="fa-solid fa-hand" style="color: #fdbe00;"></i></span>
-          <div class="tip-title">Mãos visíveis</div>
-          <div class="tip-desc">Mantenha as mãos dentro do quadro da câmera, sem cobrir os dedos.</div>
+          <div class="tip-title">Inteligência Artificial</div>
+          <div class="tip-desc">O modelo treinado identifica padrões das sequências capturadas e retorna os gestos reconhecidos.</div>
         </div>
         <div class="tip-card reveal reveal-delay-3">
           <span class="tip-ico"><i class="fa-solid fa-bullseye" style="color: #fdbe00;"></i></span>
-          <div class="tip-title">Gestos claros</div>
-          <div class="tip-desc">Faça os sinais de forma pausada e deliberada para melhor reconhecimento. Aguarde confirmação para finalizar.</div>
+          <div class="tip-title">Acessibilidade</div>
+          <div class="tip-desc">Tema escuro, alto contraste, ajuste de fonte e leitura em voz alta ajudam a adaptar a experiência ao usuário.</div>
         </div>
         <div class="tip-card reveal reveal-delay-4">
           <span class="tip-ico"><i class="fa-solid fa-ruler" style="color: #fdbe00;"></i></span>
-          <div class="tip-title">Distância certa</div>
-          <div class="tip-desc">Fique a 50–80 cm da câmera para que os sinais fiquem bem enquadrados.</div>
+          <div class="tip-title">Comunidade</div>
+          <div class="tip-desc">Tecnologia e participação caminham juntas: a plataforma também cria espaço para troca de experiências e conhecimento.</div>
         </div>
       </div>
     </div>
@@ -1010,10 +1010,10 @@ img {
   <div class="comm-wrap">
     <div class="comm-inner">
       <div class="reveal">
-        <div class="eyebrow">Ferramenta 3</div>
-        <div class="section-h2">Comunidade</div>
+        <div class="eyebrow">Conexão e inclusão</div>
+        <div class="section-h2">Comunidade LibrasHub</div>
         <div class="section-desc">
-          Conecte-se com outras pessoas. Troque experiências, tire dúvidas e participe de discussões. Requer conta gratuita.
+          Mais do que traduzir sinais, o LibrasHub cria um espaço para pessoas surdas, estudantes, intérpretes e apoiadores compartilharem conhecimento e experiências.
         </div>
       </div>
       <div class="comm-grid">
@@ -1021,42 +1021,42 @@ img {
           <div class="comm-feat">
             <div class="comm-ico"><i class="fa-solid fa-bullhorn" style="color: #fdbe00;"></i></div>
             <div>
-              <div class="comm-feat-title">Discussões e tópicos</div>
-              <div class="comm-feat-desc">Abra tópicos, responda perguntas e troque experiências com a comunidade.</div>
+              <div class="comm-feat-title">Conversas e experiências</div>
+              <div class="comm-feat-desc">Compartilhe dúvidas, vivências, aprendizados e informações relevantes para a comunidade.</div>
             </div>
           </div>
           <div class="comm-feat">
             <div class="comm-ico"><i class="fa-solid fa-calendar" style="color: #fdbe00;"></i></div>
             <div>
-              <div class="comm-feat-title">Eventos e grupos</div>
-              <div class="comm-feat-desc">Encontre eventos da comunidade e entre em grupos por região.</div>
+              <div class="comm-feat-title">Aprendizado coletivo</div>
+              <div class="comm-feat-desc">Aprenda com outras pessoas e ajude quem está começando a conhecer Libras e acessibilidade.</div>
             </div>
           </div>
           <div class="comm-feat">
             <div class="comm-ico"><i class="fa-solid fa-magnifying-glass" style="color: #fdbe00;"></i></div>
             <div>
-              <div class="comm-feat-title">Busca na comunidade</div>
-              <div class="comm-feat-desc">Pesquise tópicos, usuários e discussões para encontrar exatamente o que procura.</div>
+              <div class="comm-feat-title">Conteúdo acessível</div>
+              <div class="comm-feat-desc">Encontre discussões e publicações reunidas em um ambiente conectado ao restante da plataforma.</div>
             </div>
           </div>
           <div class="comm-feat">
             <div class="comm-ico"><i class="fa-solid fa-heart" style="color: #fdbe00;"></i></div>
             <div>
-              <div class="comm-feat-title">Curtidas e respostas</div>
-              <div class="comm-feat-desc">Interaja com publicações, curta conteúdos e participe das conversas em tempo real.</div>
+              <div class="comm-feat-title">Participação ativa</div>
+              <div class="comm-feat-desc">Responda, interaja e contribua para fortalecer uma rede mais inclusiva e colaborativa.</div>
             </div>
           </div>
         </div>
 
         <div class="lock-card reveal reveal-delay-2">
-          <span class="lock-icon"><i class="fa-solid fa-user-lock" style="color: #fdbe00;"></i></span>
-          <div class="lock-title">Requer conta gratuita</div>
+          <span class="lock-icon"><i class="fa-solid fa-users" style="color: #fdbe00;"></i></span>
+          <div class="lock-title">Você já está conectado ao LibrasHub</div>
           <div class="lock-desc">
-            A Comunidade é exclusiva para membros cadastrados. Crie sua conta em segundos e tenha acesso completo a todos os recursos.
+            Use sua conta atual para entrar na comunidade, participar das conversas e acompanhar os recursos do seu perfil.
           </div>
           <div class="lock-btns">
-            <a class="btn-lock-primary" href="cadastro.php">Criar conta grátis</a>
-            <a class="btn-lock-outline" href="login.php">Já tenho conta</a>
+            <a class="btn-lock-primary" href="comunidade.php">Abrir Comunidade</a>
+            <a class="btn-lock-outline" href="usuario.php">Ver meu perfil</a>
           </div>
         </div>
       </div>
@@ -1064,15 +1064,15 @@ img {
   </div>
 
   <!-- ── FOOTER ────────────────────────────────────────── -->
-  <footer class="hw-footer">
+  <footer class="hw-footer" role="contentinfo">
     <div class="footer-logo">
       <img src="../static/images/librashub-logo.png" alt="" class="logo-img" style="width:22px;height:22px;">
       LibrasHub
     </div>
     <div class="footer-links">
-      <a href="ajuda.html">Ajuda</a>
-      <a href="configuracoes.html">Configurações</a>
-      <a href="cadastro.php">Cadastro</a>
+      <a href="ajuda.php">Ajuda</a>
+      <a href="configuracoes.php">Configurações</a>
+      <a href="comunidade.php">Comunidade</a>
     </div>
     <div class="footer-copy">© 2026 LibrasHub</div>
   </footer>
@@ -1125,6 +1125,3 @@ img {
 
 </body>
 </html>
-0.1
-
-

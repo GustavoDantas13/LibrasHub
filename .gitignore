@@ -14,6 +14,7 @@ static/css/back/
 templates/uploads_historico/
 templates/configs/email.php
 modelos_traducao/
+composer.phar
 composer.json
 composer.lock
 vendor/

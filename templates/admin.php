@@ -1165,6 +1165,36 @@ if (
                                 "Não foi possível ativar os arquivos do modelo."
                             );
                         }
+
+
+                        $hashOrigem =
+                            hash_file(
+                                "sha256",
+                                $origem
+                            );
+
+                        $hashDestino =
+                            hash_file(
+                                "sha256",
+                                $destino
+                            );
+
+
+                        if (
+                            $hashOrigem === false
+                            ||
+                            $hashDestino === false
+                            ||
+                            !hash_equals(
+                                $hashOrigem,
+                                $hashDestino
+                            )
+                        ) {
+
+                            throw new RuntimeException(
+                                "Um dos arquivos do modelo não foi copiado corretamente."
+                            );
+                        }
                     }
 
 
@@ -1190,20 +1220,32 @@ if (
                     ]);
 
 
-                    file_put_contents(
-                        $baseProjeto
-                        .
-                        DIRECTORY_SEPARATOR
-                        .
-                        "modelo_ativo.version",
-                        $idModelo
-                        .
-                        "|"
-                        .
-                        microtime(
-                            true
-                        )
-                    );
+                    $versaoGravada =
+                        file_put_contents(
+                            $baseProjeto
+                            .
+                            DIRECTORY_SEPARATOR
+                            .
+                            "modelo_ativo.version",
+                            $idModelo
+                            .
+                            "|"
+                            .
+                            microtime(
+                                true
+                            ),
+                            LOCK_EX
+                        );
+
+
+                    if (
+                        $versaoGravada === false
+                    ) {
+
+                        throw new RuntimeException(
+                            "Não foi possível sinalizar a troca do modelo para o tradutor."
+                        );
+                    }
 
 
                     $pdo->commit();
@@ -1466,34 +1508,185 @@ if (
             try {
 
                 $stmt = $pdo->prepare("
-                    DELETE FROM gesto
+                    SELECT
+                        id_gesto,
+                        nm_gesto,
+                        dataset
+                    FROM gesto
                     WHERE id_gesto = ?
+                    LIMIT 1
                 ");
 
                 $stmt->execute([
                     $idGesto
                 ]);
 
+                $gestoExcluir =
+                    $stmt->fetch(
+                        PDO::FETCH_ASSOC
+                    );
 
-                if (
-                    $stmt->rowCount() > 0
-                ) {
 
-                    $sucesso =
-                        "Gesto removido.";
-
-                } else {
+                if (!$gestoExcluir) {
 
                     $erro =
                         "Gesto não encontrado.";
+
+                } else {
+
+                    $baseProjeto =
+                        dirname(
+                            __DIR__
+                        );
+
+                    $arquivoDataset =
+                        null;
+
+                    $datasetRelativo =
+                        str_replace(
+                            "\\",
+                            "/",
+                            trim(
+                                (string) (
+                                    $gestoExcluir[
+                                        "dataset"
+                                    ]
+                                    ?? ""
+                                )
+                            )
+                        );
+
+
+                    if (
+                        $datasetRelativo !== ""
+                    ) {
+
+                        $datasetRelativo =
+                            ltrim(
+                                $datasetRelativo,
+                                "/"
+                            );
+
+                        if (
+                            !str_starts_with(
+                                $datasetRelativo,
+                                "dataset_processado/"
+                            )
+                        ) {
+
+                            throw new RuntimeException(
+                                "O caminho do dataset do gesto é inválido."
+                            );
+                        }
+
+                        $arquivoDataset =
+                            $baseProjeto
+                            .
+                            DIRECTORY_SEPARATOR
+                            .
+                            str_replace(
+                                "/",
+                                DIRECTORY_SEPARATOR,
+                                $datasetRelativo
+                            );
+
+                        $pastaDataset =
+                            realpath(
+                                $baseProjeto
+                                .
+                                DIRECTORY_SEPARATOR
+                                .
+                                "dataset_processado"
+                            );
+
+                        $pastaArquivo =
+                            realpath(
+                                dirname(
+                                    $arquivoDataset
+                                )
+                            );
+
+                        if (
+                            $pastaDataset === false
+                            ||
+                            $pastaArquivo === false
+                            ||
+                            strcasecmp(
+                                $pastaDataset,
+                                $pastaArquivo
+                            ) !== 0
+                        ) {
+
+                            throw new RuntimeException(
+                                "O dataset informado não pertence à pasta dataset_processado."
+                            );
+                        }
+                    }
+
+
+                    $pdo->beginTransaction();
+
+
+                    $stmt = $pdo->prepare("
+                        DELETE FROM gesto
+                        WHERE id_gesto = ?
+                    ");
+
+                    $stmt->execute([
+                        $idGesto
+                    ]);
+
+
+                    if (
+                        $stmt->rowCount() === 0
+                    ) {
+
+                        throw new RuntimeException(
+                            "Não foi possível remover o gesto."
+                        );
+                    }
+
+
+                    if (
+                        $arquivoDataset !== null
+                        &&
+                        is_file(
+                            $arquivoDataset
+                        )
+                    ) {
+
+                        if (
+                            !unlink(
+                                $arquivoDataset
+                            )
+                        ) {
+
+                            throw new RuntimeException(
+                                "O gesto não foi removido porque o dataset não pôde ser excluído."
+                            );
+                        }
+                    }
+
+
+                    $pdo->commit();
+
+
+                    $sucesso =
+                        "Gesto e dataset removidos.";
                 }
 
 
-            } catch (PDOException $erroBanco) {
+            } catch (Throwable $erroGesto) {
+
+                if (
+                    $pdo->inTransaction()
+                ) {
+
+                    $pdo->rollBack();
+                }
 
                 $erro =
-                    "Não foi possível remover o gesto. "
-                    . "Ele pode estar relacionado ao histórico.";
+                    $erroGesto->getMessage();
             }
         }
 
@@ -2011,7 +2204,7 @@ $inicial =
             position: fixed;
             inset: 0;
             z-index: 1150;
-            background: rgba(0, 0, 0, .48);
+            background: rgba(199, 12, 12, 0.48);
             opacity: 0;
             pointer-events: none;
             transition: opacity .25s ease;
@@ -2424,7 +2617,7 @@ $inicial =
 
                 <span class="nav-icon">
 
-                    <i class="fa-regular fa-house"></i>
+                    <i class="fa-regular fa-house " style="color:#fdbe00;" ></i>
 
                 </span>
 
@@ -2437,7 +2630,7 @@ $inicial =
 
                 <span class="nav-icon">
 
-                    <i class="fa-solid fa-video"></i>
+                    <i class="fa-solid fa-video " style="color:#fdbe00;"></i>
 
                 </span>
 
@@ -2450,7 +2643,7 @@ $inicial =
 
                 <span class="nav-icon">
 
-                    <i class="fa-solid fa-upload"></i>
+                    <i class="fa-solid fa-upload" style="color:#fdbe00;"></i>
 
                 </span>
 
@@ -2463,7 +2656,7 @@ $inicial =
 
                 <span class="nav-icon">
 
-                    <i class="fa-solid fa-arrow-rotate-left"></i>
+                    <i class="fa-solid fa-arrow-rotate-left" style="color:#fdbe00;"></i>
 
                 </span>
 
@@ -2476,7 +2669,7 @@ $inicial =
 
                 <span class="nav-icon">
 
-                    <i class="fa-solid fa-question"></i>
+                    <i class="fa-solid fa-question" style="color:#fdbe00;"></i>
 
                 </span>
 
@@ -2489,7 +2682,7 @@ $inicial =
 
                 <span class="nav-icon">
 
-                    <i class="fa-solid fa-users"></i>
+                    <i class="fa-solid fa-users" style="color:#fdbe00;"></i>
 
                 </span>
 
@@ -2504,7 +2697,7 @@ $inicial =
 
                     <span class="nav-icon">
 
-                        <i class="fa-solid fa-shield-halved"></i>
+                        <i class="fa-solid fa-shield-halved" style="color:#fdbe00;"></i>
 
                     </span>
 
@@ -2525,7 +2718,7 @@ $inicial =
 
                 <span class="nav-icon">
 
-                    <i class="fa-solid fa-gear"></i>
+                    <i class="fa-solid fa-gear" style="color:#fdbe00;"></i>
 
                 </span>
 
@@ -2538,7 +2731,7 @@ $inicial =
 
                 <span class="nav-icon">
 
-                    <i class="fa-solid fa-user"></i>
+                    <i class="fa-solid fa-user" style="color:#fdbe00;"></i>
 
                 </span>
 
@@ -7110,7 +7303,7 @@ $inicial =
 
 
                     if (
-                        !dados.success
+                        dados.success === false
                     ) {
 
                         throw new Error(

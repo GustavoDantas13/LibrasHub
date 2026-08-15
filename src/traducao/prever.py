@@ -12,15 +12,18 @@ BASE_DIR = os.path.dirname(
     )
 )
 
+
 CAMINHO_MODELO = os.path.join(
     BASE_DIR,
     "modelo_gestos.keras"
 )
 
+
 CAMINHO_LABELS = os.path.join(
     BASE_DIR,
     "labels.npy"
 )
+
 
 CAMINHO_VERSAO = os.path.join(
     BASE_DIR,
@@ -36,9 +39,13 @@ versao_carregada = None
 def modelo_disponivel():
 
     return (
-        os.path.isfile(CAMINHO_MODELO)
+        os.path.isfile(
+            CAMINHO_MODELO
+        )
         and
-        os.path.isfile(CAMINHO_LABELS)
+        os.path.isfile(
+            CAMINHO_LABELS
+        )
     )
 
 
@@ -47,6 +54,7 @@ def obter_versao():
     if not os.path.isfile(
         CAMINHO_VERSAO
     ):
+
         return "sem-versao"
 
     try:
@@ -79,6 +87,7 @@ def carregar_modelo():
         and
         versao_carregada == versao_atual
     ):
+
         return
 
     if not os.path.isfile(
@@ -108,9 +117,51 @@ def carregar_modelo():
         allow_pickle=True
     )
 
+    novas_labels = np.asarray(
+        novas_labels
+    ).reshape(
+        -1
+    )
+
+    quantidade_saidas = int(
+        novo_modelo.output_shape[
+            -1
+        ]
+    )
+
+    if (
+        len(
+            novas_labels
+        )
+        !=
+        quantidade_saidas
+    ):
+
+        raise RuntimeError(
+            "O modelo ativo e o arquivo labels.npy "
+            "não pertencem à mesma versão. "
+            f"Saídas do modelo: {quantidade_saidas}. "
+            f"Labels: {len(novas_labels)}."
+        )
+
     modelo = novo_modelo
     labels = novas_labels
     versao_carregada = versao_atual
+
+    print(
+        "Modelo ativo carregado:",
+        versao_carregada
+    )
+
+    print(
+        "Labels ativas:",
+        [
+            str(
+                item
+            )
+            for item in labels
+        ]
+    )
 
 
 def recarregar_modelo():
@@ -137,22 +188,41 @@ def descarregar_modelo():
     versao_carregada = None
 
 
-def prever(sequencia):
+def prever(
+    sequencia
+):
 
     carregar_modelo()
-
-    print(
-        sequencia.shape
-    )
 
     pred = modelo.predict(
         sequencia,
         verbose=0
     )[0]
 
+    if (
+        len(
+            pred
+        )
+        !=
+        len(
+            labels
+        )
+    ):
+
+        raise RuntimeError(
+            "A quantidade de saídas da previsão não corresponde às labels ativas."
+        )
+
     top = np.argsort(
         pred
-    )[::-1][:10]
+    )[::-1][
+        :min(
+            10,
+            len(
+                pred
+            )
+        )
+    ]
 
     print(
         "\n========================"
@@ -182,7 +252,9 @@ def prever(sequencia):
     )
 
     indice_principal = int(
-        top[0]
+        top[
+            0
+        ]
     )
 
     gesto = str(

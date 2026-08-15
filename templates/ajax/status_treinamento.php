@@ -1,146 +1,260 @@
 <?php
 
-header("Content-Type: application/json; charset=utf-8");
+header(
+    "Content-Type: application/json; charset=utf-8"
+);
 
-ini_set("display_errors", "0");
-ini_set("log_errors", "1");
-error_reporting(E_ALL);
+ini_set(
+    "display_errors",
+    "0"
+);
 
-set_time_limit(30);
+ini_set(
+    "log_errors",
+    "1"
+);
+
+error_reporting(
+    E_ALL
+);
+
+set_time_limit(
+    30
+);
 
 
-if (!function_exists("curl_init")) {
+function responder(
+    array $dados,
+    int $codigo = 200
+): void {
 
-    http_response_code(500);
+    http_response_code(
+        $codigo
+    );
 
-    echo json_encode([
-        "success" => false,
-        "error" => "A extensão cURL do PHP não está habilitada."
-    ], JSON_UNESCAPED_UNICODE);
+    echo json_encode(
+        $dados,
+        JSON_UNESCAPED_UNICODE |
+        JSON_UNESCAPED_SLASHES
+    );
 
     exit;
 }
 
 
+if (
+    $_SERVER["REQUEST_METHOD"]
+    !==
+    "GET"
+) {
 
-$jobId = isset($_GET["job_id"])
-    ? trim($_GET["job_id"])
-    : "";
+    responder([
+        "success" => false,
+        "error" => "Método não permitido."
+    ], 405);
+}
 
-$desdeLog = isset($_GET["desde_log"])
-    ? filter_var(
-        $_GET["desde_log"],
-        FILTER_VALIDATE_INT
-    )
-    : 0;
 
 if (
-    $desdeLog === false ||
+    !function_exists(
+        "curl_init"
+    )
+) {
+
+    responder([
+        "success" => false,
+        "error" => "A extensão cURL do PHP não está habilitada."
+    ], 500);
+}
+
+
+$jobId =
+    isset(
+        $_GET["job_id"]
+    )
+        ? trim(
+            (string) $_GET["job_id"]
+        )
+        : "";
+
+
+$desdeLog =
+    isset(
+        $_GET["desde_log"]
+    )
+        ? filter_var(
+            $_GET["desde_log"],
+            FILTER_VALIDATE_INT
+        )
+        : 0;
+
+
+if (
+    $desdeLog === false
+    ||
     $desdeLog < 0
 ) {
-    $desdeLog = 0;
+
+    $desdeLog =
+        0;
 }
 
 
 $query = [
-    "desde_log" => $desdeLog
+    "desde_log" =>
+        $desdeLog
 ];
 
-if ($jobId !== "") {
-    $query["job_id"] = $jobId;
+
+if (
+    $jobId !== ""
+) {
+
+    $query["job_id"] =
+        $jobId;
 }
 
-$url = "http://127.0.0.1:5000/status_treinamento?"
-    . http_build_query($query);
+
+$url =
+    "http://127.0.0.1:5000/status_treinamento?"
+    .
+    http_build_query(
+        $query
+    );
 
 
-$curl = curl_init();
+$curl =
+    curl_init();
 
-curl_setopt_array($curl, [
 
-    CURLOPT_URL => $url,
-
-    CURLOPT_HTTPGET => true,
-
-    CURLOPT_RETURNTRANSFER => true,
-
-    CURLOPT_CONNECTTIMEOUT => 5,
-
-    CURLOPT_TIMEOUT => 15,
-
-    CURLOPT_HTTPHEADER => [
-        "Accept: application/json"
-    ]
-
-]);
-
-$resposta = curl_exec($curl);
-
-$erroCurl = curl_error($curl);
-
-$codigoHttp = curl_getinfo(
+curl_setopt_array(
     $curl,
-    CURLINFO_HTTP_CODE
+    [
+
+        CURLOPT_URL =>
+            $url,
+
+        CURLOPT_HTTPGET =>
+            true,
+
+        CURLOPT_RETURNTRANSFER =>
+            true,
+
+        CURLOPT_CONNECTTIMEOUT =>
+            5,
+
+        CURLOPT_TIMEOUT =>
+            15,
+
+        CURLOPT_HTTPHEADER => [
+            "Accept: application/json",
+            "Cache-Control: no-cache"
+        ]
+
+    ]
 );
 
 
+$resposta =
+    curl_exec(
+        $curl
+    );
 
-if ($resposta === false) {
+$erroCurl =
+    curl_error(
+        $curl
+    );
 
-    http_response_code(502);
+$codigoHttp =
+    (int) curl_getinfo(
+        $curl,
+        CURLINFO_HTTP_CODE
+    );
 
-    echo json_encode([
+
+
+if (
+    $resposta === false
+) {
+
+    responder([
         "success" => false,
         "error" => "Não foi possível consultar o status do treinamento.",
         "detalhes" => $erroCurl
-    ], JSON_UNESCAPED_UNICODE);
-
-    exit;
+    ], 502);
 }
 
 
+$json =
+    json_decode(
+        $resposta,
+        true
+    );
 
-$json = json_decode(
-    $resposta,
-    true
-);
 
-if (!is_array($json)) {
+if (
+    !is_array(
+        $json
+    )
+) {
 
-    http_response_code(502);
-
-    echo json_encode([
+    responder([
         "success" => false,
         "error" => "O Flask retornou um status inválido.",
         "http_code_flask" => $codigoHttp,
         "resposta_flask" => $resposta,
         "erro_json" => json_last_error_msg()
-    ], JSON_UNESCAPED_UNICODE);
-
-    exit;
+    ], 502);
 }
 
 
 if (
-    !isset($json["logs"]) ||
-    !is_array($json["logs"])
+    !array_key_exists(
+        "success",
+        $json
+    )
 ) {
-    $json["logs"] = [];
+
+    $json["success"] =
+        $codigoHttp >= 200
+        &&
+        $codigoHttp < 300;
 }
 
 
-if ($codigoHttp >= 400) {
+if (
+    !isset(
+        $json["logs"]
+    )
+    ||
+    !is_array(
+        $json["logs"]
+    )
+) {
 
-    http_response_code($codigoHttp);
-
-} else {
-
-    http_response_code(200);
+    $json["logs"] =
+        [];
 }
 
-echo json_encode(
+
+if (
+    !isset(
+        $json["proximo_log"]
+    )
+) {
+
+    $json["proximo_log"] =
+        $desdeLog
+        +
+        count(
+            $json["logs"]
+        );
+}
+
+
+responder(
     $json,
-    JSON_UNESCAPED_UNICODE |
-    JSON_UNESCAPED_SLASHES
+    $codigoHttp >= 400
+        ? $codigoHttp
+        : 200
 );
-?>
