@@ -3435,11 +3435,11 @@ $inicial =
 
 
 
-                                    <form method="POST" action="admin.php" onsubmit="
-                                return confirm(
-                                    'Deseja remover este gesto?'
-                                );
-                            ">
+                                    <form
+                                        method="POST"
+                                        action="admin.php"
+                                        class="form-excluir-gesto"
+                                    >
 
 
                                         <input type="hidden" name="acao" value="excluir_gesto">
@@ -6084,7 +6084,7 @@ $inicial =
 
                             <br><br>
 
-                            A pasta temporária libraas foi removida.
+                            O processamento foi interrompido e a pasta temporária libraas foi removida.
                         `;
 
 
@@ -7905,7 +7905,7 @@ $inicial =
                                             <form
                                                 method="POST"
                                                 action="admin.php"
-                                                onsubmit="return confirm('Deseja remover este gesto?');"
+                                                class="form-excluir-gesto"
                                             >
                                                 <input
                                                     type="hidden"
@@ -8230,10 +8230,21 @@ $inicial =
                 "submit",
                 async evento => {
 
-                    const form =
+                    const formAtivarModelo =
                         evento.target.closest(
                             ".form-ativar-modelo"
                         );
+
+                    const formExcluirGesto =
+                        evento.target.closest(
+                            ".form-excluir-gesto"
+                        );
+
+
+                    const form =
+                        formAtivarModelo
+                        ||
+                        formExcluirGesto;
 
 
                     if (!form) {
@@ -8244,9 +8255,43 @@ $inicial =
                     evento.preventDefault();
 
 
+                    let mensagemConfirmacao =
+                        "";
+
+                    let mensagemErro =
+                        "";
+
+                    let atualizarLista =
+                        null;
+
+
+                    if (formAtivarModelo) {
+
+                        mensagemConfirmacao =
+                            "Deseja usar este modelo nas traduções?";
+
+                        mensagemErro =
+                            "Não foi possível ativar o modelo.";
+
+                        atualizarLista =
+                            window.atualizarListaModelos;
+
+                    } else {
+
+                        mensagemConfirmacao =
+                            "Deseja excluir este gesto e o arquivo do dataset correspondente?";
+
+                        mensagemErro =
+                            "Não foi possível excluir o gesto e seu dataset.";
+
+                        atualizarLista =
+                            window.atualizarListaGestos;
+                    }
+
+
                     if (
                         !confirm(
-                            "Deseja usar este modelo nas traduções?"
+                            mensagemConfirmacao
                         )
                     ) {
                         return;
@@ -8283,13 +8328,35 @@ $inicial =
                                 "admin.php",
                                 {
                                     method: "POST",
-                                    body: formData
+                                    body: formData,
+                                    headers: {
+                                        "X-Requested-With":
+                                            "XMLHttpRequest"
+                                    }
                                 }
                             );
 
 
-                        const dados =
-                            await resposta.json();
+                        const texto =
+                            await resposta.text();
+
+
+                        let dados;
+
+
+                        try {
+
+                            dados =
+                                JSON.parse(
+                                    texto
+                                );
+
+                        } catch (erroJson) {
+
+                            throw new Error(
+                                "O servidor retornou uma resposta inválida."
+                            );
+                        }
 
 
                         if (
@@ -8301,12 +8368,18 @@ $inicial =
                             throw new Error(
                                 dados.error
                                 ??
-                                "Não foi possível ativar o modelo."
+                                mensagemErro
                             );
                         }
 
 
-                        await window.atualizarListaModelos();
+                        if (
+                            typeof atualizarLista ===
+                            "function"
+                        ) {
+
+                            await atualizarLista();
+                        }
 
 
                     } catch (erro) {

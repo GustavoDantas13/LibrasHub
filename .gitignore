@@ -7,7 +7,6 @@ accuracy.png
 contexto.py
 dataset_nlp.py
 loss.png
-ajax/temp/
 resultados_treinamento/
 templates/back/
 static/css/back/
@@ -23,3 +22,4 @@ modelo_ativo.version
 modelo_gestos.keras
 scaler_mean.npy
 scaler_scale.npy
+templates/ajax/temp/

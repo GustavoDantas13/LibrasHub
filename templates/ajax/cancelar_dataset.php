@@ -28,128 +28,6 @@ function responder(
 }
 
 
-function removerDiretorio(
-    string $diretorio
-): bool {
-
-    if (
-        !is_dir(
-            $diretorio
-        )
-    ) {
-
-        return true;
-    }
-
-
-    $itens =
-        scandir(
-            $diretorio
-        );
-
-
-    if (
-        $itens === false
-    ) {
-
-        return false;
-    }
-
-
-    foreach (
-        $itens
-        as $item
-    ) {
-
-        if (
-            $item === "."
-            ||
-            $item === ".."
-        ) {
-
-            continue;
-        }
-
-
-        $caminho =
-            $diretorio
-            .
-            DIRECTORY_SEPARATOR
-            .
-            $item;
-
-
-        if (
-            is_dir(
-                $caminho
-            )
-            &&
-            !is_link(
-                $caminho
-            )
-        ) {
-
-            if (
-                !removerDiretorio(
-                    $caminho
-                )
-            ) {
-
-                return false;
-            }
-
-        } else {
-
-            if (
-                is_file(
-                    $caminho
-                )
-                ||
-                is_link(
-                    $caminho
-                )
-            ) {
-
-                @chmod(
-                    $caminho,
-                    0777
-                );
-
-                if (
-                    !@unlink(
-                        $caminho
-                    )
-                    &&
-                    file_exists(
-                        $caminho
-                    )
-                ) {
-
-                    return false;
-                }
-            }
-        }
-    }
-
-
-    @chmod(
-        $diretorio,
-        0777
-    );
-
-
-    return (
-        @rmdir(
-            $diretorio
-        )
-        ||
-        !is_dir(
-            $diretorio
-        )
-    );
-}
-
-
 if (
     $_SERVER["REQUEST_METHOD"]
     !==
@@ -217,76 +95,116 @@ if (
 }
 
 
-$baseProjeto =
-    dirname(
-        __DIR__,
-        2
-    );
-
-
-$pastaLibraas =
-    $baseProjeto
-    .
-    DIRECTORY_SEPARATOR
-    .
-    "libraas";
-
-
-$tentativas =
-    5;
-
-
-for (
-    $tentativa = 1;
-    $tentativa <= $tentativas;
-    $tentativa++
+if (
+    !function_exists(
+        "curl_init"
+    )
 ) {
 
-    if (
-        !is_dir(
-            $pastaLibraas
-        )
-    ) {
-
-        responder([
-            "success" => true,
-            "message" => "Criação do dataset cancelada.",
-            "pasta_libraas_removida" => true
-        ]);
-    }
-
-
-    removerDiretorio(
-        $pastaLibraas
-    );
-
-
-    if (
-        !is_dir(
-            $pastaLibraas
-        )
-    ) {
-
-        responder([
-            "success" => true,
-            "message" => "Criação do dataset cancelada.",
-            "pasta_libraas_removida" => true
-        ]);
-    }
-
-
-    usleep(
-        250000
-    );
+    responder([
+        "success" => false,
+        "error" => "A extensão cURL do PHP não está habilitada."
+    ], 500);
 }
 
 
-responder([
-    "success" => false,
-    "error" => (
-        "Não foi possível remover completamente a pasta libraas. "
-        .
-        "Algum arquivo pode ainda estar em uso pelo processamento."
-    ),
-    "pasta_libraas_removida" => false
-], 500);
+$curl =
+    curl_init();
+
+
+curl_setopt_array(
+    $curl,
+    [
+
+        CURLOPT_URL =>
+            "http://127.0.0.1:5000/cancelar_dataset",
+
+        CURLOPT_POST =>
+            true,
+
+        CURLOPT_RETURNTRANSFER =>
+            true,
+
+        CURLOPT_CONNECTTIMEOUT =>
+            5,
+
+        CURLOPT_TIMEOUT =>
+            45,
+
+        CURLOPT_HTTPHEADER => [
+            "Accept: application/json"
+        ]
+
+    ]
+);
+
+
+$resposta =
+    curl_exec(
+        $curl
+    );
+
+
+$erroCurl =
+    curl_error(
+        $curl
+    );
+
+
+$codigoHttp =
+    (int) curl_getinfo(
+        $curl,
+        CURLINFO_HTTP_CODE
+    );
+
+
+curl_close(
+    $curl
+);
+
+
+if (
+    $resposta === false
+) {
+
+    responder([
+        "success" => false,
+        "error" => (
+            "Não foi possível solicitar o cancelamento ao Python."
+        ),
+        "detalhes" =>
+            $erroCurl
+    ], 502);
+}
+
+
+$dados =
+    json_decode(
+        $resposta,
+        true
+    );
+
+
+if (
+    !is_array(
+        $dados
+    )
+) {
+
+    responder([
+        "success" => false,
+        "error" => (
+            "O Python retornou uma resposta inválida."
+        ),
+        "resposta_python" =>
+            $resposta
+    ], 502);
+}
+
+
+responder(
+    $dados,
+    $codigoHttp > 0
+        ? $codigoHttp
+        : 500
+);

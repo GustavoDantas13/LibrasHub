@@ -17,8 +17,45 @@ SEQUENCE_LENGTH = 30
 
 def criar_dataset(
     dataset_dir,
-    output_dir
+    output_dir,
+    cancelar_evento=None
 ):
+
+    def cancelado():
+
+        return (
+            cancelar_evento is not None
+            and
+            cancelar_evento.is_set()
+        )
+
+
+    def resposta_cancelada():
+
+        for caminho in arquivos_gerados_nesta_execucao:
+
+            if os.path.isfile(
+                caminho
+            ):
+
+                try:
+
+                    os.remove(
+                        caminho
+                    )
+
+                except OSError:
+
+                    pass
+
+        return {
+            "success": False,
+            "cancelled": True,
+            "error": "Criação do dataset cancelada.",
+            "total_amostras": 0,
+            "datasets_gerados": []
+        }
+
 
     if not os.path.isdir(
         dataset_dir
@@ -42,8 +79,8 @@ def criar_dataset(
 
 
     total_amostras = 0
-
     datasets_gerados = []
+    arquivos_gerados_nesta_execucao = []
 
 
     for gesto in sorted(
@@ -51,6 +88,11 @@ def criar_dataset(
             dataset_dir
         )
     ):
+
+        if cancelado():
+
+            return resposta_cancelada()
+
 
         pasta = os.path.join(
             dataset_dir,
@@ -61,6 +103,7 @@ def criar_dataset(
         if not os.path.isdir(
             pasta
         ):
+
             continue
 
 
@@ -83,6 +126,11 @@ def criar_dataset(
 
         for arquivo in arquivos:
 
+            if cancelado():
+
+                return resposta_cancelada()
+
+
             caminho = os.path.join(
                 pasta,
                 arquivo
@@ -92,6 +140,7 @@ def criar_dataset(
             if not os.path.isfile(
                 caminho
             ):
+
                 continue
 
 
@@ -124,7 +173,9 @@ def criar_dataset(
 
                     seq = (
                         processar_video_dataset(
-                            caminho
+                            caminho,
+                            cancelar_evento=
+                                cancelar_evento
                         )
                     )
 
@@ -132,6 +183,11 @@ def criar_dataset(
                 else:
 
                     continue
+
+
+                if cancelado():
+
+                    return resposta_cancelada()
 
 
                 if seq is None:
@@ -148,6 +204,11 @@ def criar_dataset(
                 amostras.append(
                     seq
                 )
+
+
+                if cancelado():
+
+                    return resposta_cancelada()
 
 
                 amostras.append(
@@ -168,11 +229,21 @@ def criar_dataset(
 
             except Exception as erro:
 
+                if cancelado():
+
+                    return resposta_cancelada()
+
+
                 print(
                     "   ✖",
                     arquivo,
                     erro
                 )
+
+
+        if cancelado():
+
+            return resposta_cancelada()
 
 
         if len(amostras) == 0:
@@ -208,6 +279,16 @@ def criar_dataset(
             caminho_saida,
             amostras
         )
+
+
+        arquivos_gerados_nesta_execucao.append(
+            caminho_saida
+        )
+
+
+        if cancelado():
+
+            return resposta_cancelada()
 
 
         caminho_absoluto = os.path.abspath(
@@ -260,6 +341,11 @@ def criar_dataset(
             "   Dataset:",
             caminho_absoluto
         )
+
+
+    if cancelado():
+
+        return resposta_cancelada()
 
 
     if len(

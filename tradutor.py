@@ -10,6 +10,7 @@ import shutil
 import numpy as np
 import uuid
 import time
+import threading
 
 from werkzeug.utils import secure_filename
 
@@ -96,6 +97,53 @@ ultimo_gesto = ""
 gesto_confirmado = None
 
 contador_confirmacao = 0
+
+cancelar_dataset_evento = threading.Event()
+
+dataset_processamento_ativo = threading.Event()
+
+
+def remover_libraas(
+    tentativas=40,
+    intervalo=0.25
+):
+
+    for _ in range(
+        tentativas
+    ):
+
+        if not os.path.exists(
+            LIBRAAS_DIR
+        ):
+
+            return True
+
+        try:
+
+            shutil.rmtree(
+                LIBRAAS_DIR
+            )
+
+        except OSError:
+
+            time.sleep(
+                intervalo
+            )
+
+            continue
+
+        if not os.path.exists(
+            LIBRAAS_DIR
+        ):
+
+            return True
+
+
+    return (
+        not os.path.exists(
+            LIBRAAS_DIR
+        )
+    )
 
 
 def recursos_traducao_disponiveis():
@@ -371,16 +419,13 @@ def finalizar_dataset():
 
         return jsonify({
             "success": False,
-
             "error": (
                 "A pasta libraas não foi encontrada. "
                 "Nenhum arquivo foi salvo pela rota "
                 "/criar_dataset."
             ),
-
             "caminho":
                 LIBRAAS_DIR
-
         }), 404
 
 
@@ -390,26 +435,20 @@ def finalizar_dataset():
 
         return jsonify({
             "success": False,
-
             "error": (
                 "A pasta do gesto não foi encontrada."
             ),
-
             "caminho":
                 pasta_gesto
-
         }), 404
 
 
     arquivos = [
-
         nome
-
         for nome
         in os.listdir(
             pasta_gesto
         )
-
         if os.path.isfile(
             os.path.join(
                 pasta_gesto,
@@ -431,19 +470,24 @@ def finalizar_dataset():
 
         return jsonify({
             "success": False,
-
             "error": (
                 "A pasta do gesto está vazia."
             )
-
         }), 400
+
+
+    cancelar_dataset_evento.clear()
+
+    dataset_processamento_ativo.set()
 
 
     try:
 
         resultado = criar_dataset(
             LIBRAAS_DIR,
-            DATASET_PROCESSADO_DIR
+            DATASET_PROCESSADO_DIR,
+            cancelar_evento=
+                cancelar_dataset_evento
         )
 
 
@@ -454,13 +498,29 @@ def finalizar_dataset():
 
             return jsonify({
                 "success": False,
-
                 "error": (
                     "A função criar_dataset não "
                     "retornou um resultado válido."
                 )
-
             }), 500
+
+
+        if resultado.get(
+            "cancelled",
+            False
+        ):
+
+            pasta_removida = remover_libraas()
+
+            return jsonify({
+                "success": False,
+                "cancelled": True,
+                "error": (
+                    "Criação do dataset cancelada."
+                ),
+                "pasta_libraas_removida":
+                    pasta_removida
+            }), 409
 
 
         if not resultado.get(
@@ -498,13 +558,11 @@ def finalizar_dataset():
 
             return jsonify({
                 "success": False,
-
                 "error": (
                     "O processamento terminou, "
                     "mas o arquivo do gesto solicitado "
                     "não foi encontrado."
                 )
-
             }), 500
 
 
@@ -525,12 +583,10 @@ def finalizar_dataset():
 
             return jsonify({
                 "success": False,
-
                 "error": (
                     "O arquivo .npy não foi encontrado "
                     "após o processamento."
                 )
-
             }), 500
 
 
@@ -562,24 +618,22 @@ def finalizar_dataset():
         )
 
 
-        # Remove a pasta libraas
-        # somente depois que o .npy
-        # foi confirmado.
-
-        if os.path.isdir(
-            LIBRAAS_DIR
-        ):
-
-            shutil.rmtree(
-                LIBRAAS_DIR
-            )
+        pasta_removida = remover_libraas()
 
 
-        pasta_removida = (
-            not os.path.exists(
-                LIBRAAS_DIR
-            )
-        )
+        if not pasta_removida:
+
+            return jsonify({
+                "success": False,
+                "error": (
+                    "O dataset foi criado, mas a pasta "
+                    "temporária libraas não pôde ser removida."
+                ),
+                "dataset":
+                    caminho_relativo,
+                "pasta_libraas_removida":
+                    False
+            }), 500
 
 
         print(
@@ -589,40 +643,31 @@ def finalizar_dataset():
 
 
         return jsonify({
-
             "success": True,
-
             "nome_gesto":
                 nome_dataset,
-
             "dataset":
                 caminho_relativo,
-
             "arquivo_dataset":
                 dataset_gerado.get(
                     "arquivo"
                 ),
-
             "total_amostras":
                 dataset_gerado.get(
                     "amostras",
                     0
                 ),
-
             "shape":
                 dataset_gerado.get(
                     "shape",
                     []
                 ),
-
             "arquivos_recebidos":
                 len(
                     arquivos
                 ),
-
             "pasta_libraas_removida":
                 pasta_removida
-
         }), 200
 
 
@@ -637,15 +682,85 @@ def finalizar_dataset():
 
 
         return jsonify({
-
             "success": False,
-
             "error":
                 str(
                     erro
                 )
-
         }), 500
+
+
+    finally:
+
+        dataset_processamento_ativo.clear()
+
+
+@app.route(
+    "/cancelar_dataset",
+    methods=["POST"]
+)
+def cancelar_dataset_api():
+
+    cancelar_dataset_evento.set()
+
+
+    limite = time.time() + 30
+
+
+    while (
+        dataset_processamento_ativo.is_set()
+        and
+        time.time() < limite
+    ):
+
+        time.sleep(
+            0.1
+        )
+
+
+    processamento_ativo = (
+        dataset_processamento_ativo.is_set()
+    )
+
+
+    if processamento_ativo:
+
+        return jsonify({
+            "success": False,
+            "cancelled": True,
+            "error": (
+                "O cancelamento foi solicitado, "
+                "mas o processamento ainda está liberando os arquivos."
+            ),
+            "pasta_libraas_removida":
+                False
+        }), 409
+
+
+    pasta_removida = remover_libraas()
+
+
+    if not pasta_removida:
+
+        return jsonify({
+            "success": False,
+            "cancelled": True,
+            "error": (
+                "O processamento foi interrompido, "
+                "mas a pasta libraas ainda não pôde ser removida."
+            ),
+            "pasta_libraas_removida":
+                False
+        }), 500
+
+
+    return jsonify({
+        "success": True,
+        "cancelled": True,
+        "pasta_libraas_removida":
+            True
+    }), 200
+
 
 # Iniciar treinamento
 
