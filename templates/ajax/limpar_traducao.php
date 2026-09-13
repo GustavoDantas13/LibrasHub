@@ -1,5 +1,7 @@
 <?php
 
+session_start();
+
 header(
     "Content-Type: application/json; charset=utf-8"
 );
@@ -11,6 +13,12 @@ ini_set(
 
 error_reporting(
     E_ALL
+);
+
+
+$sessaoTraducao = hash(
+    "sha256",
+    session_id()
 );
 
 
@@ -123,7 +131,12 @@ curl_setopt_array(
             5,
 
         CURLOPT_TIMEOUT =>
-            15
+            15,
+
+        CURLOPT_POSTFIELDS => [
+            "sessao_traducao" =>
+                $sessaoTraducao
+        ]
 
     ]
 );
