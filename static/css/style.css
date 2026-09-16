@@ -34,6 +34,9 @@
   --input-text:var(--color-black);
 
   --font-scale:1;
+  --shadow-sm:0 2px 10px rgba(40,32,0,.08);
+  --shadow-md:0 14px 40px rgba(40,32,0,.14);
+  --radius:14px;
 }
 
 /* TEMA ESCURO */
@@ -86,7 +89,15 @@ body{
   display:flex;
   overflow:hidden; /* impede o scroll da página inteira - só .content rola */
   transition:background .2s,color .2s;
+  line-height:1.55;
 }
+
+/* Base visual e foco acessível */
+button,input,select,textarea{font:inherit}
+button,a,input,select,textarea{transition:border-color .18s,background-color .18s,color .18s,box-shadow .18s,transform .18s}
+:focus-visible{outline:3px solid var(--primary-link);outline-offset:3px}
+::selection{background:var(--primary);color:var(--primary-text)}
+.panel,.card,.auth-box{box-shadow:var(--shadow-sm)}
 
 /* SIDEBAR - estrutura (30%) */
 .sidebar{
@@ -186,7 +197,7 @@ body{
 .card{
   background:var(--surface);
   border:1px solid var(--border);
-  border-radius:10px;
+  border-radius:var(--radius);
   padding:20px;
   cursor:pointer;
   transition:.15s;
@@ -194,6 +205,34 @@ body{
   color:var(--text);
   display:block;
 }
+
+/* Central global de acessibilidade */
+.skip-link{position:fixed;top:8px;left:50%;z-index:100000;transform:translate(-50%,-180%);background:#000;color:#fff;padding:10px 18px;border-radius:8px;font-weight:700;text-decoration:none}
+.skip-link:focus{transform:translate(-50%,0)}
+.a11y-toggle{position:fixed;right:18px;bottom:18px;z-index:99990;display:flex;align-items:center;gap:8px;min-height:46px;padding:10px 14px;border:2px solid var(--primary);border-radius:999px;background:var(--primary);color:var(--primary-text);box-shadow:0 8px 28px rgba(0,0,0,.24);font-weight:700;cursor:pointer}
+.a11y-panel{position:fixed;right:18px;bottom:78px;z-index:99991;width:min(380px,calc(100vw - 24px));max-height:min(720px,calc(100dvh - 100px));overflow:auto;overscroll-behavior:contain;padding:16px;border:2px solid var(--border);border-radius:18px;background:var(--surface);color:var(--text);box-shadow:0 20px 60px rgba(0,0,0,.32)}
+.a11y-panel[aria-hidden="true"]{display:none}
+.a11y-panel,.a11y-panel button,.a11y-panel select,.a11y-panel output{color:var(--text)}
+.a11y-panel header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}.a11y-panel header div{display:grid}.a11y-panel header strong{font-size:1.05rem}.a11y-panel header small{color:var(--text-muted)}
+.a11y-panel header button{width:36px;height:36px;border:0;border-radius:50%;background:var(--bg);color:var(--text);font-size:1.5rem;cursor:pointer}
+.a11y-font{display:grid;grid-template-columns:48px 1fr 48px;align-items:center;text-align:center;margin-bottom:12px;border:1px solid var(--border);border-radius:12px;overflow:hidden}.a11y-font button{height:44px;border:0;background:var(--bg);color:var(--text);font-weight:800;cursor:pointer}.a11y-font output{font-weight:700}
+.a11y-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.a11y-action{min-height:72px;display:flex;align-items:center;gap:9px;padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text);line-height:1.25;text-align:left;cursor:pointer}.a11y-action i{width:24px;font-size:1.1rem;text-align:center;flex:0 0 auto}.a11y-action[aria-pressed="true"]{background:var(--primary);color:var(--primary-text);border-color:var(--primary);box-shadow:inset 0 0 0 2px currentColor}.a11y-action[data-a11y="readable"]{border-style:dashed}.a11y-action[data-a11y="readable"][aria-pressed="true"]{border-style:solid}
+.a11y-select{display:grid;gap:5px;margin-top:12px;font-size:.8rem;font-weight:700}.a11y-select select{width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);color:var(--input-text)}
+.a11y-reset{width:100%;margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text);font-weight:700;cursor:pointer}.a11y-hint{text-align:center;margin:8px 0 0;color:var(--text-muted);font-size:.72rem}
+.a11y-toast{position:fixed;left:50%;bottom:22px;z-index:100001;transform:translate(-50%,150%);padding:10px 16px;border-radius:10px;background:#171717;color:#fff;opacity:0;transition:.2s;pointer-events:none}.a11y-toast.show{transform:translate(-50%,0);opacity:1}
+html.a11y-readable body{font-family:Verdana,Arial,sans-serif!important;letter-spacing:.035em;word-spacing:.12em;line-height:1.75}html.a11y-readable p,html.a11y-readable li,html.a11y-readable label{line-height:1.8}html.a11y-readable p{max-width:75ch}
+html.a11y-underline a{text-decoration:underline!important;text-decoration-thickness:2px!important;text-underline-offset:3px}
+html.a11y-motion *,html.a11y-motion *::before,html.a11y-motion *::after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.001ms!important}
+.a11y-cursor-indicator{display:none;position:fixed;top:-4px;left:-3px;z-index:100010;width:34px;height:34px;pointer-events:none;color:#fff;font-size:30px;line-height:1;-webkit-text-stroke:3px #000;filter:drop-shadow(0 2px 2px #fff);transform:translate3d(-100px,-100px,0)}html.a11y-cursor .a11y-cursor-indicator{display:block}
+html.a11y-select-mode ::selection{background:#000;color:#ffed00}
+html[data-color-filter="protanopia"] body>*:not(.a11y-panel):not(.a11y-toggle):not(.a11y-wrap):not(.a11y-toast):not(.a11y-cursor-indicator):not([vw]){filter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='p'%3E%3CfeColorMatrix values='.567 .433 0 0 0 .558 .442 0 0 0 0 .242 .758 0 0 0 0 0 1 0'/%3E%3C/filter%3E%3C/svg%3E%23p")}
+html[data-color-filter="deuteranopia"] body>*:not(.a11y-panel):not(.a11y-toggle):not(.a11y-wrap):not(.a11y-toast):not(.a11y-cursor-indicator):not([vw]){filter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='d'%3E%3CfeColorMatrix values='.625 .375 0 0 0 .7 .3 0 0 0 0 .3 .7 0 0 0 0 0 1 0'/%3E%3C/filter%3E%3C/svg%3E%23d")}
+html[data-color-filter="tritanopia"] body>*:not(.a11y-panel):not(.a11y-toggle):not(.a11y-wrap):not(.a11y-toast):not(.a11y-cursor-indicator):not([vw]){filter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='t'%3E%3CfeColorMatrix values='.95 .05 0 0 0 0 .433 .567 0 0 0 .475 .525 0 0 0 0 0 1 0'/%3E%3C/filter%3E%3C/svg%3E%23t")}
+html[data-color-filter="grayscale"] body>*:not(.a11y-panel):not(.a11y-toggle):not(.a11y-wrap):not(.a11y-toast):not(.a11y-cursor-indicator):not([vw]){filter:grayscale(1)}
+html.a11y-contrast{--bg:#000;--surface:#000;--border:#fff;--text:#fff;--text-muted:#fff;--primary:#ffed00;--primary-text:#000;--primary-link:#ffed00;--sidebar-bg:#000;--sidebar-text:#fff;--input-bg:#000;--input-text:#fff}
+html.a11y-contrast *{border-color:currentColor!important;text-shadow:none!important}html.a11y-contrast body{background:#000!important;color:#fff!important}html.a11y-contrast .a11y-panel{border:3px solid #ffed00!important;background:#000!important;color:#fff!important}html.a11y-contrast .a11y-action,html.a11y-contrast .a11y-font,html.a11y-contrast .a11y-reset{border:2px solid #fff!important;background:#000!important;color:#fff!important}html.a11y-contrast .a11y-action[aria-pressed="true"]{background:#ffed00!important;color:#000!important;border-color:#ffed00!important}
+@media(max-width:600px){.a11y-toggle{right:10px;bottom:10px}.a11y-toggle span:last-child{display:none}.a11y-panel{right:8px;bottom:66px;width:calc(100vw - 16px);padding:12px}.a11y-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:390px){.a11y-grid{grid-template-columns:1fr}.a11y-action{min-height:52px}}
+html[data-font-level="max"] .a11y-panel{width:min(460px,calc(100vw - 20px))}html[data-font-level="max"] .a11y-grid{grid-template-columns:1fr}html[data-font-level="max"] .a11y-action{min-height:54px}html[data-font-level="max"] .grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
 .card:hover{
   border-color:var(--primary);
   box-shadow:0 2px 10px rgba(36,26,246,.18);}
@@ -454,13 +493,13 @@ body{
 /* Animação usada nas páginas comuns.
    As abas do painel administrativo são <section>, então elas
    precisam ficar fora desta regra para não permanecerem invisíveis. */
-section:not(.admin-tab){
+section.reveal-section{
     opacity:0;
-    transform:translateY(50px);
-    transition:1s;
+    transform:translateY(28px);
+    transition:.55s ease;
 }
 
-section:not(.admin-tab).show{
+section.reveal-section.show{
     opacity:1;
     transform:translateY(0);
 }

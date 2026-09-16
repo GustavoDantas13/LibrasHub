@@ -214,12 +214,14 @@ try {
                 id_usuario,
                 id_gesto,
                 url_arquivo,
+                origem,
                 texto_resultado
             )
             VALUES (
                 ?,
                 ?,
                 ?,
+                'upload',
                 ?
             )
         ");

@@ -630,179 +630,13 @@ body{
 
 </style>
 
+<link rel="stylesheet" href="../static/css/sidebar.css">
 </head>
 
 <body>
 
 
-<aside class="sidebar" id="sidebarMenu">
-
-    <div class="sidebar-top">
-
-        <div class="logo">
-
-            <img
-                src="../static/images/librashub-logo.png"
-                alt="LibrasHub"
-                class="logo-img"
-                style="
-                    width:32px;
-                    height:32px;
-                    object-fit:contain;
-                    border-radius:6px;
-                "
-            >
-
-            LibrasHub
-
-        </div>
-
-
-        <a
-            class="nav-item"
-            href="home.php"
-            data-page="home"
-        >
-            <span class="nav-icon">
-                <i
-                    class="fa-regular fa-house"
-                    style="color:#fdbe00;"
-                ></i>
-            </span>
-            Início
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="leitor.php"
-            data-page="leitor"
-        >
-            <span class="nav-icon">
-                <i
-                    class="fa-solid fa-video"
-                    style="color:#fdbe00;"
-                ></i>
-            </span>
-            Leitor
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="upload.php"
-            data-page="upload"
-        >
-            <span class="nav-icon">
-                <i
-                    class="fa-solid fa-upload"
-                    style="color:#fdbe00;"
-                ></i>
-            </span>
-            Upload
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="historico.php"
-            data-page="historico"
-        >
-            <span class="nav-icon">
-                <i
-                    class="fa-solid fa-arrow-rotate-left"
-                    style="color:#fdbe00;"
-                ></i>
-            </span>
-            Histórico
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="ajuda.php"
-            data-page="ajuda"
-        >
-            <span class="nav-icon">
-                <i
-                    class="fa-solid fa-question"
-                    style="color:#fdbe00;"
-                ></i>
-            </span>
-            Ajuda
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="comunidade.php"
-            data-page="comunidade"
-        >
-            <span class="nav-icon">
-                <i
-                    class="fa-solid fa-users"
-                    style="color:#fdbe00;"
-                ></i>
-            </span>
-            Comunidade
-        </a>
-
-
-        <?php if ($ehAdmin): ?>
-
-            <a
-                class="nav-item"
-                href="admin.php"
-                data-page="admin"
-            >
-                <span class="nav-icon">
-                    <i
-                        class="fa-solid fa-shield-halved"
-                        style="color:#fdbe00;"
-                    ></i>
-                </span>
-                Administração
-            </a>
-
-        <?php endif; ?>
-
-    </div>
-
-
-    <div class="sidebar-bottom">
-
-        <a
-            class="nav-item"
-            href="configuracoes.php"
-            data-page="configuracoes"
-        >
-            <span class="nav-icon">
-                <i
-                    class="fa-solid fa-gear"
-                    style="color:#fdbe00;"
-                ></i>
-            </span>
-            Configurações
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="usuario.php"
-            data-page="usuario"
-        >
-            <span class="nav-icon">
-                <i
-                    class="fa-solid fa-user"
-                    style="color:#fdbe00;"
-                ></i>
-            </span>
-            Usuário
-        </a>
-
-    </div>
-
-</aside>
+<?php $sidebarId = "sidebarMenu"; include __DIR__ . "/partials/sidebar.php"; ?>
 
 
 <main class="content">
@@ -817,7 +651,7 @@ body{
         <div class="alert alert-error settings-alert">
 
             <span aria-hidden="true">
-                ⚠
+                <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
             </span>
 
             <span>
@@ -838,7 +672,7 @@ body{
         <div class="alert alert-success settings-alert">
 
             <span aria-hidden="true">
-                ✓
+                <i class="fa-solid fa-check" aria-hidden="true"></i>
             </span>
 
             <span>
@@ -860,8 +694,10 @@ body{
     >
 
         <div class="section-title">
-            ◐ Aparência
+            <i class="fa-solid fa-universal-access" aria-hidden="true"></i> Acessibilidade e Aparência
         </div>
+
+        <p class="row-desc">As mesmas preferências da página inicial são aplicadas em todo o LibrasHub.</p>
 
 
         <div
@@ -974,34 +810,26 @@ body{
 
         </div>
 
+        <div class="row-between">
 
-        <div class="section-title">
-            🌐 Idioma
-        </div>
+            <div>
+                <div class="row-title">Leitura em Voz Alta</div>
+                <div class="row-desc">Lê o conteúdo desta página em português</div>
+            </div>
 
-
-        <div class="field">
-
-            <label for="idiomaInterface">
-                Idioma da Interface
-            </label>
-
-            <select
-                id="idiomaInterface"
-                onchange="salvarPreferencia('libras_idioma', this.value)"
+            <button
+                type="button"
+                class="btn btn-outline"
+                id="settingsTtsToggle"
+                onclick="alternarLeituraVoz()"
+                aria-pressed="false"
             >
-                <option value="pt-BR">
-                    Português (Brasil)
-                </option>
-                <option value="en">
-                    English
-                </option>
-                <option value="es">
-                    Español
-                </option>
-            </select>
+                <i class="fa-solid fa-volume-high" aria-hidden="true"></i>
+                <span>Iniciar leitura</span>
+            </button>
 
         </div>
+
 
     </div>
 
@@ -1231,6 +1059,63 @@ function setContrast(
 }
 
 
+let leituraAtiva = false;
+
+function pararLeituraVoz() {
+    if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+    }
+
+    leituraAtiva = false;
+
+    const botao = document.getElementById("settingsTtsToggle");
+    if (botao) {
+        botao.setAttribute("aria-pressed", "false");
+        botao.querySelector("span").textContent = "Iniciar leitura";
+        botao.querySelector("i").className = "fa-solid fa-volume-high";
+    }
+}
+
+
+function alternarLeituraVoz() {
+    if (!("speechSynthesis" in window)) {
+        alert("Seu navegador não oferece suporte à leitura em voz alta.");
+        return;
+    }
+
+    if (leituraAtiva) {
+        pararLeituraVoz();
+        return;
+    }
+
+    const conteudo = document.querySelector("main.content");
+    const texto = conteudo ? conteudo.innerText.replace(/\s+/g, " ").trim() : "";
+    if (texto === "") {
+        return;
+    }
+
+    const fala = new SpeechSynthesisUtterance(texto);
+    fala.lang = "pt-BR";
+    fala.rate = 0.94;
+    fala.onend = pararLeituraVoz;
+    fala.onerror = pararLeituraVoz;
+
+    leituraAtiva = true;
+
+    const botao = document.getElementById("settingsTtsToggle");
+    botao?.setAttribute("aria-pressed", "true");
+    if (botao) {
+        botao.querySelector("span").textContent = "Parar leitura";
+        botao.querySelector("i").className = "fa-solid fa-stop";
+    }
+
+    window.speechSynthesis.speak(fala);
+}
+
+
+window.addEventListener("beforeunload", pararLeituraVoz);
+
+
 function salvarPreferencia(
     chave,
     valor
@@ -1307,7 +1192,6 @@ function limparCacheLocal() {
         "libras_theme",
         "libras_fontsize",
         "libras_contrast",
-        "libras_idioma",
         "libras_notificacoes_email",
         "libras_sons",
         "libras_armazenar_videos",
@@ -1384,23 +1268,6 @@ function limparCacheLocal() {
             "on",
             contraste === "on"
         );
-
-
-    const idioma =
-        safeGet(
-            "libras_idioma",
-            "pt-BR"
-        );
-
-    const selectIdioma =
-        document.getElementById(
-            "idiomaInterface"
-        );
-
-    if (selectIdioma) {
-        selectIdioma.value =
-            idioma;
-    }
 
 
     carregarToggle(
@@ -1625,6 +1492,7 @@ function limparCacheLocal() {
 </script>
 
 
+<script src="../static/js/acessibility.js" defer></script>
 </body>
 
 </html>

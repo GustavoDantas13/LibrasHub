@@ -798,40 +798,13 @@ img {
   .hero-visual-icon { transition: none !important; animation: none !important; }
 }
 </style>
+<link rel="stylesheet" href="../static/css/app-shell.css">
+<link rel="stylesheet" href="../static/css/sidebar.css">
 </head>
-<body>
+<body class="app-shell app-dashboard">
 
 <!-- ══ SIDEBAR ══════════════════════════════════════════ -->
-<aside class="sidebar" id="sidebarNav" aria-label="Navegação principal">
-  <div class="sidebar-top">
-    <div class="logo">
-      <img src="../static/images/librashub-logo.png" alt="LibrasHub" class="logo-img">
-      LibrasHub
-    </div>
-    <a class="nav-item" href="home.php"          data-page="home"><span class="nav-icon"><i class="fa-regular fa-house" style="color:#fdbe00;"></i></span>Início</a>
-    <a class="nav-item" href="leitor.php"        data-page="leitor"><span class="nav-icon"><i class="fa-solid fa-video" style="color:#fdbe00;"></i></span>Leitor</a>
-    <a class="nav-item" href="upload.php"        data-page="upload"><span class="nav-icon"><i class="fa-solid fa-upload" style="color:#fdbe00;"></i></span>Upload</a>
-    <a class="nav-item" href="historico.php"     data-page="historico"><span class="nav-icon"><i class="fa-solid fa-arrow-rotate-left" style="color:#fdbe00;"></i></span>Histórico</a>
-    <a class="nav-item" href="ajuda.php"         data-page="ajuda"><span class="nav-icon"><i class="fa-solid fa-question" style="color:#fdbe00;"></i></span>Ajuda</a>
-    <a class="nav-item" href="comunidade.php"     data-page="comunidade"><span class="nav-icon"><i class="fa-solid fa-users" style="color:#fdbe00;"></i></span>Comunidade</a>
-
-    <?php if ($ehAdmin): ?>
-
-      <a class="nav-item" href="admin.php" data-page="admin">
-        <span class="nav-icon">
-          <i class="fa-solid fa-shield-halved" style="color:#fdbe00;"></i>
-        </span>
-        Administração
-      </a>
-
-    <?php endif; ?>
-
-  </div>
-  <div class="sidebar-bottom">
-    <a class="nav-item" href="configuracoes.php" data-page="configuracoes"><span class="nav-icon"><i class="fa-solid fa-gear" style="color:#fdbe00;"></i></span>Configurações</a>
-    <a class="nav-item" href="usuario.php"        data-page="usuario"><span class="nav-icon"><i class="fa-solid fa-user" style="color:#fdbe00;"></i></span>Usuário</a>
-  </div>
-</aside>
+<?php $sidebarId = "sidebarNav"; include __DIR__ . "/partials/sidebar.php"; ?>
 
 <!-- ══ CONTEÚDO PRINCIPAL ══════════════════════════════ -->
 <div class="content" id="conteudo-principal" role="main">
@@ -943,7 +916,7 @@ img {
     <div class="tool-block flip reveal">
       <div class="tool-visual">
         <div class="tool-badge">Sem login</div>
-        <div class="tool-visual-ico">⬆</div>
+        <div class="tool-visual-ico"><i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i></div>
         <div class="tool-visual-lbl">Imagem ou vídeo para análise</div>
       </div>
       <div class="tool-text">
@@ -1055,8 +1028,8 @@ img {
             Use sua conta atual para entrar na comunidade, participar das conversas e acompanhar os recursos do seu perfil.
           </div>
           <div class="lock-btns">
-            <a class="btn-lock-primary" href="comunidade.php">Abrir Comunidade</a>
-            <a class="btn-lock-outline" href="usuario.php">Ver meu perfil</a>
+            <a class="btn-lock-primary" href="social.php">Abrir Social</a>
+            <a class="btn-lock-outline" href="perfil.php">Ver meu perfil e publicações</a>
           </div>
         </div>
       </div>
@@ -1123,5 +1096,6 @@ img {
 
 </script>
 
+<script src="../static/js/acessibility.js" defer></script>
 </body>
 </html>

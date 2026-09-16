@@ -6,8 +6,33 @@ use PHPMailer\PHPMailer\PHPMailer;
 session_start();
 
 require_once "configs/config.php";
-require_once "configs/email.php";
-require_once "../vendor/autoload.php";
+$emailConfig = __DIR__ . "/configs/email.php";
+$composerAutoload = dirname(__DIR__) . "/vendor/autoload.php";
+if (is_file($emailConfig)) require_once $emailConfig;
+if (is_file($composerAutoload)) require_once $composerAutoload;
+$emailEnvironment = [
+    "SMTP_HOST",
+    "SMTP_USUARIO",
+    "SMTP_SENHA",
+    "SMTP_REMETENTE",
+    "SMTP_NOME",
+    "SMTP_PORT",
+    "EMAIL_SUPORTE"
+];
+foreach ($emailEnvironment as $emailKey) {
+    $emailValue = getenv($emailKey);
+    if (!defined($emailKey) && $emailValue !== false && $emailValue !== "") {
+        define($emailKey, $emailKey === "SMTP_PORT" ? (int) $emailValue : $emailValue);
+    }
+}
+$emailSupportReady = class_exists(PHPMailer::class)
+    && defined("SMTP_HOST")
+    && defined("SMTP_USUARIO")
+    && defined("SMTP_SENHA")
+    && defined("SMTP_REMETENTE")
+    && defined("SMTP_NOME")
+    && defined("SMTP_PORT")
+    && defined("EMAIL_SUPORTE");
 
 if (empty($_SESSION["usuario_id"])) {
     header("Location: ../index.php");
@@ -124,6 +149,11 @@ if (
 
         $erro =
             "A mensagem é muito longa.";
+
+    } elseif (!$emailSupportReady) {
+
+        $erro =
+            "O canal de email ainda não foi configurado no servidor.";
 
     } else {
 
@@ -284,6 +314,7 @@ if (
     rel="stylesheet"
     href="../static/css/style.css"
 >
+<link rel="stylesheet" href="../static/css/app-shell.css">
 
 <script>
 
@@ -701,224 +732,13 @@ body{
 
 </style>
 
+<link rel="stylesheet" href="../static/css/sidebar.css">
 </head>
 
-<body>
+<body class="app-shell app-dashboard">
 
 
-<aside class="sidebar" id="mobileSidebar">
-
-    <div class="sidebar-top">
-
-        <div class="logo">
-
-            <img
-                src="../static/images/librashub-logo.png"
-                alt="LibrasHub"
-                class="logo-img"
-                style="
-                    width:32px;
-                    height:32px;
-                    object-fit:contain;
-                    border-radius:6px;
-                "
-            >
-
-            LibrasHub
-
-        </div>
-
-
-        <a
-            class="nav-item"
-            href="home.php"
-            data-page="home"
-        >
-
-            <span class="nav-icon">
-
-                <i
-                    class="fa-regular fa-house"
-                    style="color:#fdbe00;"
-                ></i>
-
-            </span>
-
-            Início
-
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="leitor.php"
-            data-page="leitor"
-        >
-
-            <span class="nav-icon">
-
-                <i
-                    class="fa-solid fa-video"
-                    style="color:#fdbe00;"
-                ></i>
-
-            </span>
-
-            Leitor
-
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="upload.php"
-            data-page="upload"
-        >
-
-            <span class="nav-icon">
-
-                <i
-                    class="fa-solid fa-upload"
-                    style="color:#fdbe00;"
-                ></i>
-
-            </span>
-
-            Upload
-
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="historico.php"
-            data-page="historico"
-        >
-
-            <span class="nav-icon">
-
-                <i
-                    class="fa-solid fa-arrow-rotate-left"
-                    style="color:#fdbe00;"
-                ></i>
-
-            </span>
-
-            Histórico
-
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="ajuda.php"
-            data-page="ajuda"
-        >
-
-            <span class="nav-icon">
-
-                <i
-                    class="fa-solid fa-question"
-                    style="color:#fdbe00;"
-                ></i>
-
-            </span>
-
-            Ajuda
-
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="comunidade.php"
-            data-page="comunidade"
-        >
-
-            <span class="nav-icon">
-
-                <i
-                    class="fa-solid fa-users"
-                    style="color:#fdbe00;"
-                ></i>
-
-            </span>
-
-            Comunidade
-
-        </a>
-
-
-        <?php if ($ehAdmin): ?>
-
-            <a
-                class="nav-item"
-                href="admin.php"
-                data-page="admin"
-            >
-
-                <span class="nav-icon">
-
-                    <i
-                        class="fa-solid fa-shield-halved"
-                        style="color:#fdbe00;"
-                    ></i>
-
-                </span>
-
-                Administração
-
-            </a>
-
-        <?php endif; ?>
-
-    </div>
-
-
-    <div class="sidebar-bottom">
-
-        <a
-            class="nav-item"
-            href="configuracoes.php"
-            data-page="configuracoes"
-        >
-
-            <span class="nav-icon">
-
-                <i
-                    class="fa-solid fa-gear"
-                    style="color:#fdbe00;"
-                ></i>
-
-            </span>
-
-            Configurações
-
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="usuario.php"
-            data-page="usuario"
-        >
-
-            <span class="nav-icon">
-
-                <i
-                    class="fa-solid fa-user"
-                    style="color:#fdbe00;"
-                ></i>
-
-            </span>
-
-            Usuário
-
-        </a>
-
-    </div>
-
-</aside>
+<?php $sidebarId = "mobileSidebar"; include __DIR__ . "/partials/sidebar.php"; ?>
 
 
 <main class="content">
@@ -937,7 +757,7 @@ body{
         <div class="alert alert-error contact-alert">
 
             <span aria-hidden="true">
-                ⚠
+                <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
             </span>
 
             <span>
@@ -958,7 +778,7 @@ body{
         <div class="alert alert-success contact-alert">
 
             <span aria-hidden="true">
-                ✓
+                <i class="fa-solid fa-check" aria-hidden="true"></i>
             </span>
 
             <span>
@@ -990,7 +810,7 @@ body{
                         margin-bottom:8px;
                     "
                 >
-                    ❓ PERGUNTAS FREQUENTES
+                    <i class="fa-solid fa-circle-question" aria-hidden="true"></i> PERGUNTAS FREQUENTES
                 </div>
 
 
@@ -1078,7 +898,7 @@ body{
                         margin-bottom:6px;
                     "
                 >
-                    💡 DICAS PARA MELHOR PRECISÃO
+                    <i class="fa-solid fa-lightbulb" aria-hidden="true"></i> DICAS PARA MELHOR PRECISÃO
                 </div>
 
                 <ul>
@@ -1114,7 +934,7 @@ body{
                     margin-bottom:12px;
                 "
             >
-                ✉ ENTRE EM CONTATO
+                <i class="fa-solid fa-envelope" aria-hidden="true"></i> ENTRE EM CONTATO
             </div>
 
 
@@ -1449,6 +1269,7 @@ function toggleFaq(
 </script>
 
 
+<script src="../static/js/acessibility.js" defer></script>
 </body>
 
 </html>

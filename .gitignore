@@ -23,3 +23,10 @@ modelo_gestos.keras
 scaler_mean.npy
 scaler_scale.npy
 templates/ajax/temp/
+LEIA-ME-design.md
+MAPA-GRATUITO.md
+PATCH_USUARIO_SELO.md
+README_INSTALACAO.md
+user.ini
+database/
+templates/configs/email.local.example.php

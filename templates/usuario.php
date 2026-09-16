@@ -3,6 +3,10 @@
 session_start();
 
 require_once "configs/config.php";
+$communityColumn = $pdo->query("SHOW COLUMNS FROM usuario LIKE 'is_community_user'")->fetch();
+if (!$communityColumn) {
+    $pdo->exec("ALTER TABLE usuario ADD COLUMN is_community_user TINYINT(1) NOT NULL DEFAULT 0 AFTER tp_usuario");
+}
 
 if (empty($_SESSION["usuario_id"])) {
     header("Location: login.php");
@@ -22,6 +26,11 @@ function buscarUsuario($pdo, $id)
             nm_usuario,
             email_usuario,
             tp_usuario,
+            is_community_user,
+            foto_perfil,
+            banner_perfil,
+            status_visibilidade,
+            ultimo_acesso_em,
             dt_usuario
         FROM usuario
         WHERE id_usuario = ?
@@ -35,6 +44,47 @@ function buscarUsuario($pdo, $id)
     return $stmt->fetch(
         PDO::FETCH_ASSOC
     );
+}
+
+function salvarMidiaPerfil(array $arquivo, string $tipo, int $idUsuario, ?string $atual): ?string
+{
+    if (($arquivo["error"] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        return $atual;
+    }
+
+    if (($arquivo["error"] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK || !is_uploaded_file($arquivo["tmp_name"] ?? "")) {
+        throw new RuntimeException("Não foi possível receber a imagem de " . $tipo . ".");
+    }
+
+    if ((int) ($arquivo["size"] ?? 0) > 5 * 1024 * 1024) {
+        throw new RuntimeException("A imagem de " . $tipo . " deve ter no máximo 5 MB.");
+    }
+
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($arquivo["tmp_name"]);
+    $extensoes = ["image/jpeg" => "jpg", "image/png" => "png", "image/webp" => "webp"];
+    if (!isset($extensoes[$mime])) {
+        throw new RuntimeException("Use JPG, PNG ou WebP na imagem de " . $tipo . ".");
+    }
+
+    $pasta = dirname(__DIR__) . "/static/uploads/perfis/" . $idUsuario;
+    if (!is_dir($pasta) && !mkdir($pasta, 0755, true)) {
+        throw new RuntimeException("Não foi possível preparar a pasta de imagens do perfil.");
+    }
+
+    $nome = $tipo . "_" . bin2hex(random_bytes(10)) . "." . $extensoes[$mime];
+    $destino = $pasta . "/" . $nome;
+    if (!move_uploaded_file($arquivo["tmp_name"], $destino)) {
+        throw new RuntimeException("Não foi possível salvar a imagem de " . $tipo . ".");
+    }
+
+    if ($atual && str_starts_with($atual, "../static/uploads/perfis/")) {
+        $antigo = dirname(__DIR__) . "/" . ltrim(substr($atual, 3), "/");
+        if (is_file($antigo)) {
+            @unlink($antigo);
+        }
+    }
+
+    return "../static/uploads/perfis/" . $idUsuario . "/" . $nome;
 }
 
 $usuario = buscarUsuario(
@@ -67,6 +117,10 @@ if (
         $_POST["email"]
         ?? ""
     );
+
+    $statusVisibilidade = ($_POST["status_visibilidade"] ?? "visivel") === "oculto"
+        ? "oculto"
+        : "visivel";
 
     if (
         $nome === ""
@@ -119,17 +173,37 @@ if (
 
             } else {
 
+                $fotoPerfil = salvarMidiaPerfil(
+                    $_FILES["foto_perfil"] ?? [],
+                    "foto",
+                    $idUsuario,
+                    $usuario["foto_perfil"] ?? null
+                );
+
+                $bannerPerfil = salvarMidiaPerfil(
+                    $_FILES["banner_perfil"] ?? [],
+                    "banner",
+                    $idUsuario,
+                    $usuario["banner_perfil"] ?? null
+                );
+
                 $stmt = $pdo->prepare("
                     UPDATE usuario
                     SET
                         nm_usuario = ?,
-                        email_usuario = ?
+                        email_usuario = ?,
+                        foto_perfil = ?,
+                        banner_perfil = ?,
+                        status_visibilidade = ?
                     WHERE id_usuario = ?
                 ");
 
                 $stmt->execute([
                     $nome,
                     $email,
+                    $fotoPerfil,
+                    $bannerPerfil,
+                    $statusVisibilidade,
                     $idUsuario
                 ]);
 
@@ -147,6 +221,10 @@ if (
                     $idUsuario
                 );
             }
+
+        } catch (RuntimeException $e) {
+
+            $erro = $e->getMessage();
 
         } catch (PDOException $e) {
 
@@ -305,11 +383,17 @@ $ehAdmin =
         )
     ) === "administrador";
 
+$statusOnline =
+    ($usuario["status_visibilidade"] ?? "visivel") === "visivel"
+    && !empty($usuario["ultimo_acesso_em"])
+    && strtotime((string) $usuario["ultimo_acesso_em"]) >= time() - 300;
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
+    <link rel="icon" type="image/png" href="../static/images/librashub-logo.png">
 
 <meta charset="UTF-8">
 
@@ -333,6 +417,7 @@ $ehAdmin =
     rel="stylesheet"
     href="../static/css/style.css"
 >
+<link rel="stylesheet" href="../static/css/app-shell.css">
 
 <script>
 
@@ -1225,146 +1310,13 @@ body{
 
 </style>
 
+<link rel="stylesheet" href="../static/css/sidebar.css">
 </head>
 
 <body>
 
 
-<aside class="sidebar" id="sidebarMenu">
-
-    <div class="sidebar-top">
-
-        <div class="logo">
-
-            <img
-                src="../static/images/librashub-logo.png"
-                alt="LibrasHub"
-                class="logo-img"
-            >
-
-            LibrasHub
-
-        </div>
-
-
-        <a
-            class="nav-item"
-            href="home.php"
-            data-page="home"
-        >
-            <span class="nav-icon">
-                <i class="fa-regular fa-house"></i>
-            </span>
-            Início
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="leitor.php"
-            data-page="leitor"
-        >
-            <span class="nav-icon">
-                <i class="fa-solid fa-video"></i>
-            </span>
-            Leitor
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="upload.php"
-            data-page="upload"
-        >
-            <span class="nav-icon">
-                <i class="fa-solid fa-upload"></i>
-            </span>
-            Upload
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="historico.php"
-            data-page="historico"
-        >
-            <span class="nav-icon">
-                <i class="fa-solid fa-arrow-rotate-left"></i>
-            </span>
-            Histórico
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="ajuda.php"
-            data-page="ajuda"
-        >
-            <span class="nav-icon">
-                <i class="fa-solid fa-question"></i>
-            </span>
-            Ajuda
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="comunidade.php"
-            data-page="comunidade"
-        >
-            <span class="nav-icon">
-                <i class="fa-solid fa-users"></i>
-            </span>
-            Comunidade
-        </a>
-
-
-        <?php if ($ehAdmin): ?>
-
-            <a
-                class="nav-item"
-                href="admin.php"
-                data-page="admin"
-            >
-                <span class="nav-icon">
-                    <i class="fa-solid fa-shield-halved"></i>
-                </span>
-                Administração
-            </a>
-
-        <?php endif; ?>
-
-    </div>
-
-
-    <div class="sidebar-bottom">
-
-        <a
-            class="nav-item"
-            href="configuracoes.php"
-            data-page="configuracoes"
-        >
-            <span class="nav-icon">
-                <i class="fa-solid fa-gear"></i>
-            </span>
-            Configurações
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="usuario.php"
-            data-page="usuario"
-        >
-            <span class="nav-icon">
-                <i class="fa-solid fa-user"></i>
-            </span>
-            Usuário
-        </a>
-
-    </div>
-
-</aside>
+<?php $sidebarId = "sidebarMenu"; include __DIR__ . "/partials/sidebar.php"; ?>
 
 
 <main class="content">
@@ -1380,7 +1332,7 @@ body{
             "
         >
             <span aria-hidden="true">
-                ⚠
+                <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
             </span>
 
             <span>
@@ -1405,7 +1357,7 @@ body{
             "
         >
             <span aria-hidden="true">
-                ✓
+                <i class="fa-solid fa-check" aria-hidden="true"></i>
             </span>
 
             <span>
@@ -1428,11 +1380,11 @@ body{
 
             <div class="avatar-lg">
 
-                <?= htmlspecialchars(
-                    $inicial,
-                    ENT_QUOTES,
-                    "UTF-8"
-                ) ?>
+                <?php if (!empty($usuario["foto_perfil"])): ?>
+                    <img src="<?= htmlspecialchars((string) $usuario["foto_perfil"], ENT_QUOTES, "UTF-8") ?>" alt="Foto de perfil" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">
+                <?php else: ?>
+                    <?= htmlspecialchars($inicial, ENT_QUOTES, "UTF-8") ?>
+                <?php endif; ?>
 
             </div>
 
@@ -1446,6 +1398,12 @@ body{
                 ) ?>
 
             </div>
+
+            <?php if ($ehAdmin): ?>
+                <span class="community-badge"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Administrador</span>
+            <?php elseif (!empty($usuario["is_community_user"])): ?>
+                <span class="community-badge"><i class="fa-solid fa-certificate" aria-hidden="true"></i> Colaborador da comunidade</span>
+            <?php endif; ?>
 
 
             <div class="user-email">
@@ -1685,7 +1643,7 @@ body{
                         <div
                             class="info-value"
                             style="
-                                color:var(--success);
+                                color:<?= $statusOnline ? "var(--success)" : "var(--text-muted)" ?>;
                                 font-weight:600;
                             "
                         >
@@ -1698,7 +1656,7 @@ body{
                                 "
                             ></i>
 
-                            Ativo
+                            <?= $statusOnline ? "Online" : "Offline" ?>
                         </div>
 
                     </div>
@@ -1823,7 +1781,7 @@ body{
                 onclick="fecharModal('modalEditar')"
                 aria-label="Fechar"
             >
-                ✕
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
             </button>
 
 
@@ -1840,7 +1798,9 @@ body{
             ></div>
 
 
-            <form id="formEditarPerfil">
+            <form id="formEditarPerfil" method="POST" action="usuario.php" enctype="multipart/form-data">
+
+                <input type="hidden" name="acao" value="atualizar_perfil">
 
 
                 <div class="field">
@@ -1852,6 +1812,7 @@ body{
                     <input
                         type="text"
                         id="editNome"
+                        name="nome"
                         placeholder="Seu nome completo"
                         required
                     >
@@ -1871,10 +1832,31 @@ body{
                     <input
                         type="email"
                         id="editEmail"
+                        name="email"
                         placeholder="seuemail@exemplo.com"
                         required
                     >
 
+                </div>
+
+                <div class="field">
+                    <label for="editStatus">Visibilidade do status</label>
+                    <select id="editStatus" name="status_visibilidade">
+                        <option value="visivel" <?= ($usuario["status_visibilidade"] ?? "visivel") === "visivel" ? "selected" : "" ?>>Mostrar quando estou online</option>
+                        <option value="oculto" <?= ($usuario["status_visibilidade"] ?? "visivel") === "oculto" ? "selected" : "" ?>>Ocultar status (sempre offline)</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label for="editFoto">Foto do perfil</label>
+                    <input type="file" id="editFoto" name="foto_perfil" accept="image/jpeg,image/png,image/webp">
+                    <small>JPG, PNG ou WebP, até 5 MB.</small>
+                </div>
+
+                <div class="field" style="margin-bottom:0;">
+                    <label for="editBanner">Banner do perfil</label>
+                    <input type="file" id="editBanner" name="banner_perfil" accept="image/jpeg,image/png,image/webp">
+                    <small>Esta imagem será exibida no topo do seu perfil Social.</small>
                 </div>
 
 
@@ -1956,7 +1938,7 @@ body{
                 onclick="fecharModal('modalExcluir')"
                 aria-label="Fechar"
             >
-                ✕
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
             </button>
 
 
@@ -2235,8 +2217,7 @@ function mostrarAlertaEditar(
     alerta.innerHTML =
         (
             tipo === "error"
-                ? "⚠ "
-                : "✓ "
+                ? "Erro: " : "Sucesso: "
         )
         +
         mensagem;
@@ -2307,67 +2288,11 @@ function salvarPerfil(){
         '<i class="fa-solid fa-spinner fa-spin"></i> Salvando…';
 
 
-    var form =
-        document.createElement(
-            "form"
-        );
-
-    form.method =
-        "POST";
-
-    form.action =
-        "usuario.php";
-
-    form.style.display =
-        "none";
-
-
-    function addField(
-        nomeCampo,
-        valor
-    ){
-
-        var input =
-            document.createElement(
-                "input"
-            );
-
-        input.type =
-            "hidden";
-
-        input.name =
-            nomeCampo;
-
-        input.value =
-            valor;
-
-        form.appendChild(
-            input
-        );
-    }
-
-
-    addField(
-        "acao",
-        "atualizar_perfil"
-    );
-
-    addField(
-        "nome",
-        nome
-    );
-
-    addField(
-        "email",
-        email
-    );
-
-
-    document.body.appendChild(
-        form
-    );
-
-    form.submit();
+    document
+        .getElementById(
+            "formEditarPerfil"
+        )
+        .submit();
 }
 
 
@@ -2639,6 +2564,7 @@ function verificarConfirmacao(){
 </script>
 
 
+<script src="../static/js/acessibility.js" defer></script>
 </body>
 
 </html>

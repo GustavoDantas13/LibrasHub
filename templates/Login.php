@@ -1,7 +1,5 @@
 <?php
 
-session_start();
-
 require_once "configs/config.php";
 
 
@@ -13,10 +11,15 @@ $erro = "";
 $paginasPermitidas = [
     "home.php",
     "comunidade.php",
+    "locais.php",
+    "social.php",
+    "chats.php",
     "leitor.php",
     "upload.php",
     "historico.php",
+    "ajuda.php",
     "usuario.php",
+    "perfil.php",
     "configuracoes.php",
     "admin.php"
 ];
@@ -152,6 +155,11 @@ if (
             $_SESSION["usuario_tipo"] =
                 $usuario["tp_usuario"];
 
+            // Todo login cria automaticamente um token persistente para este
+            // navegador. Um token anterior deste dispositivo é substituído.
+            authRevokeRememberToken($pdo);
+            authCreateRememberToken($pdo, (int) $usuario["id_usuario"]);
+
 
             header(
                 "Location: " . $redirect
@@ -180,10 +188,13 @@ if (
         LibrasHub - Login
     </title>
 
+    <link rel="icon" type="image/png" href="../static/images/librashub-logo.png">
+
     <link
         rel="stylesheet"
         href="../static/css/style.css"
     >
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 
 </head>
 
@@ -199,7 +210,7 @@ if (
 
         <div class="auth-icon">
 
-            👤
+            <i class="fa-solid fa-user" aria-hidden="true"></i>
 
         </div>
 
@@ -238,7 +249,7 @@ if (
 
                 <span aria-hidden="true">
 
-                    ⚠
+                    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
 
                 </span>
 
@@ -326,7 +337,6 @@ if (
 
             </div>
 
-
             <button
                 type="submit"
                 class="btn btn-block"
@@ -359,6 +369,7 @@ if (
 </div>
 
 
+<script src="../static/js/acessibility.js" defer></script>
 </body>
 
 </html>

@@ -56,6 +56,7 @@ if (!empty($_SESSION["usuario_id"])) {
 <html lang="pt-BR">
 
 <head>
+    <link rel="icon" type="image/png" href="../static/images/librashub-logo.png">
 
 <meta charset="UTF-8">
 
@@ -1101,261 +1102,14 @@ body{
 
 </style>
 
+<link rel="stylesheet" href="../static/css/sidebar.css">
 </head>
 
 
 <body>
 
 
-<aside class="sidebar" id="sidebarMenu">
-
-    <div class="sidebar-top">
-
-        <div class="logo">
-
-            <img
-                src="../static/images/librashub-logo.png"
-                alt="LibrasHub"
-                class="logo-img"
-                style="
-                    width:32px;
-                    height:32px;
-                    object-fit:contain;
-                    border-radius:6px;
-                "
-            >
-
-            LibrasHub
-
-        </div>
-
-
-        <?php if ($usuarioLogado): ?>
-
-            <a
-                class="nav-item"
-                href="home.php"
-                data-page="home"
-            >
-
-                <span class="nav-icon">
-
-                    <i
-                        class="fa-regular fa-house"
-                        style="color:#fdbe00;"
-                    ></i>
-
-                </span>
-
-                Início
-
-            </a>
-
-        <?php endif; ?>
-
-
-        <a
-            class="nav-item"
-            href="leitor.php"
-            data-page="leitor"
-        >
-
-            <span class="nav-icon">
-
-                <i
-                    class="fa-solid fa-video"
-                    style="color:#fdbe00;"
-                ></i>
-
-            </span>
-
-            Leitor
-
-        </a>
-
-
-        <a
-            class="nav-item"
-            href="upload.php"
-            data-page="upload"
-        >
-
-            <span class="nav-icon">
-
-                <i
-                    class="fa-solid fa-upload"
-                    style="color:#fdbe00;"
-                ></i>
-
-            </span>
-
-            Upload
-
-        </a>
-
-
-        <?php if (!$usuarioLogado): ?>
-
-            <a
-                class="nav-item"
-                href="../index.php"
-                data-page="index"
-            >
-
-                <span class="nav-icon">
-
-                    <i
-                        class="fa-solid fa-arrow-left"
-                        style="color:#fdbe00;"
-                    ></i>
-
-                </span>
-
-                Voltar ao início
-
-            </a>
-
-        <?php endif; ?>
-
-
-        <?php if ($usuarioLogado): ?>
-
-            <a
-                class="nav-item"
-                href="historico.php"
-                data-page="historico"
-            >
-
-                <span class="nav-icon">
-
-                    <i
-                        class="fa-solid fa-arrow-rotate-left"
-                        style="color:#fdbe00;"
-                    ></i>
-
-                </span>
-
-                Histórico
-
-            </a>
-
-
-            <a
-                class="nav-item"
-                href="ajuda.php"
-                data-page="ajuda"
-            >
-
-                <span class="nav-icon">
-
-                    <i
-                        class="fa-solid fa-question"
-                        style="color:#fdbe00;"
-                    ></i>
-
-                </span>
-
-                Ajuda
-
-            </a>
-
-
-            <a
-                class="nav-item"
-                href="comunidade.php"
-                data-page="comunidade"
-            >
-
-                <span class="nav-icon">
-
-                    <i
-                        class="fa-solid fa-users"
-                        style="color:#fdbe00;"
-                    ></i>
-
-                </span>
-
-                Comunidade
-
-            </a>
-
-
-            <?php if ($ehAdmin): ?>
-
-                <a
-                    class="nav-item"
-                    href="admin.php"
-                    data-page="admin"
-                >
-
-                    <span class="nav-icon">
-
-                        <i
-                            class="fa-solid fa-shield-halved"
-                            style="color:#fdbe00;"
-                        ></i>
-
-                    </span>
-
-                    Administração
-
-                </a>
-
-            <?php endif; ?>
-
-        <?php endif; ?>
-
-    </div>
-
-
-    <?php if ($usuarioLogado): ?>
-
-        <div class="sidebar-bottom">
-
-            <a
-                class="nav-item"
-                href="configuracoes.php"
-                data-page="configuracoes"
-            >
-
-                <span class="nav-icon">
-
-                    <i
-                        class="fa-solid fa-gear"
-                        style="color:#fdbe00;"
-                    ></i>
-
-                </span>
-
-                Configurações
-
-            </a>
-
-
-            <a
-                class="nav-item"
-                href="usuario.php"
-                data-page="usuario"
-            >
-
-                <span class="nav-icon">
-
-                    <i
-                        class="fa-solid fa-user"
-                        style="color:#fdbe00;"
-                    ></i>
-
-                </span>
-
-                Usuário
-
-            </a>
-
-        </div>
-
-    <?php endif; ?>
-
-</aside>
+<?php $sidebarId = "sidebarMenu"; include __DIR__ . "/partials/sidebar.php"; ?>
 
 
 
@@ -3107,6 +2861,7 @@ renderizarArquivos();
 </script>
 
 
+<script src="../static/js/acessibility.js" defer></script>
 </body>
 
 </html>

@@ -1,7 +1,5 @@
 <?php
 
-session_start();
-
 header(
     "Content-Type: application/json; charset=utf-8"
 );
@@ -15,11 +13,13 @@ error_reporting(
     E_ALL
 );
 
+require_once __DIR__ . "/../configs/config.php";
 
-$sessaoTraducao = hash(
-    "sha256",
-    session_id()
-);
+if (empty($_SESSION["usuario_id"])) {
+    http_response_code(401);
+    echo json_encode(["status" => "erro", "error" => "Usuário não autenticado."]);
+    exit;
+}
 
 
 if (
@@ -208,9 +208,7 @@ curl_setopt_array(
                     $caminho,
                     "image/jpeg",
                     "frame.jpg"
-                ),
-            "sessao_traducao" =>
-                $sessaoTraducao
+                )
         ]
 
     ]
@@ -317,6 +315,48 @@ if (
     ]);
 
     exit;
+}
+
+// Registra somente traduções confirmadas. Frames de análise e resultados
+// repetidos em poucos segundos não geram itens duplicados no histórico.
+if (($json["status"] ?? "") === "traduzido") {
+    $textoHistorico = trim((string) ($json["texto"] ?? $json["gesto"] ?? ""));
+    $gestoHistorico = trim((string) ($json["gesto"] ?? ""));
+
+    if ($textoHistorico !== "") {
+        try {
+            $idGesto = null;
+            if ($gestoHistorico !== "") {
+                $gestoStmt = $pdo->prepare(
+                    "SELECT id_gesto FROM gesto WHERE LOWER(TRIM(nm_gesto)) = LOWER(TRIM(?)) LIMIT 1"
+                );
+                $gestoStmt->execute([$gestoHistorico]);
+                $idEncontrado = $gestoStmt->fetchColumn();
+                $idGesto = $idEncontrado ? (int) $idEncontrado : null;
+            }
+
+            $duplicado = $pdo->prepare(
+                "SELECT id_historico FROM historico
+                 WHERE id_usuario = ? AND origem = 'camera_tempo_real'
+                   AND texto_resultado = ? AND criado_em >= DATE_SUB(NOW(), INTERVAL 8 SECOND)
+                 LIMIT 1"
+            );
+            $duplicado->execute([(int) $_SESSION["usuario_id"], $textoHistorico]);
+
+            if (!$duplicado->fetchColumn()) {
+                $historicoStmt = $pdo->prepare(
+                    "INSERT INTO historico (id_usuario,id_gesto,url_arquivo,origem,texto_resultado)
+                     VALUES (?,?,NULL,'camera_tempo_real',?)"
+                );
+                $historicoStmt->execute([(int) $_SESSION["usuario_id"], $idGesto, $textoHistorico]);
+                $json["historico_registrado"] = true;
+            }
+        } catch (PDOException $historicoError) {
+            // A tradução continua sendo devolvida mesmo se o histórico estiver
+            // temporariamente indisponível ou a migração ainda não foi aplicada.
+            $json["historico_registrado"] = false;
+        }
+    }
 }
 
 

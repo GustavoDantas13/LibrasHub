@@ -1,5 +1,9 @@
 <?php
-session_start();
+require_once __DIR__ . "/templates/configs/auth.php";
+authStartSession();
+if (empty($_SESSION["usuario_id"]) && !empty($_COOKIE[AUTH_COOKIE_NAME])) {
+    require_once __DIR__ . "/templates/configs/config.php";
+}
 
 if (!empty($_SESSION["usuario_id"])) {
     header("Location: templates/home.php");
@@ -21,6 +25,9 @@ if (!empty($_SESSION["usuario_id"])) {
 
     <link rel="icon" type="image/png" href="static/images/librashub-logo.png">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link
         rel="stylesheet"
@@ -137,6 +144,13 @@ if (!empty($_SESSION["usuario_id"])) {
                 var(--bg);
             color: var(--text);
             transition: background .25s ease, color .25s ease;
+            font-family: 'IBM Plex Sans', 'Segoe UI', Arial, sans-serif;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'IBM Plex Sans', 'Segoe UI', Arial, sans-serif;
+            font-weight: 700 !important;
+            letter-spacing: -.025em;
         }
 
         a,
@@ -219,8 +233,8 @@ if (!empty($_SESSION["usuario_id"])) {
             margin: 0;
             font-size: clamp(2rem, 4.7vw, 4rem);
             line-height: 1.02;
-            letter-spacing: -.045em;
-            font-weight: 900;
+            letter-spacing: -.03em;
+            font-weight: 700;
             color: var(--text);
         }
 
@@ -490,9 +504,9 @@ if (!empty($_SESSION["usuario_id"])) {
             margin: 0;
             max-width: 790px;
             font-size: clamp(2.6rem, 6vw, 5.7rem);
-            line-height: .96;
-            letter-spacing: -.06em;
-            font-weight: 950;
+            line-height: 1;
+            letter-spacing: -.04em;
+            font-weight: 700;
         }
 
         .hero-lead {
@@ -1529,13 +1543,22 @@ if (!empty($_SESSION["usuario_id"])) {
 
         .a11y-panel {
             display: none;
-            width: min(290px, calc(100vw - 28px));
+            width: min(380px, calc(100vw - 24px));
+            max-height: calc(100dvh - 100px);
+            overflow-y: auto;
+            overscroll-behavior: contain;
             padding: 16px;
-            border: 1px solid var(--border);
+            border: 2px solid var(--border);
             border-radius: 18px;
             background: var(--surface);
             color: var(--text);
             box-shadow: 0 20px 55px rgba(2,12,27,.16);
+        }
+
+        .a11y-panel button,
+        .a11y-panel select,
+        .a11y-panel output {
+            color: inherit;
         }
 
         .a11y-panel.open {
@@ -1572,6 +1595,7 @@ if (!empty($_SESSION["usuario_id"])) {
         }
 
         .a11y-mini button,
+        .a11y-row > button,
         .a11y-toggle {
             min-width: 40px;
             min-height: 38px;
@@ -1584,6 +1608,7 @@ if (!empty($_SESSION["usuario_id"])) {
         }
 
         .a11y-mini button.active,
+        .a11y-row > button.active,
         .a11y-toggle.active {
             border-color: var(--primary);
             background: var(--primary);
@@ -1602,6 +1627,21 @@ if (!empty($_SESSION["usuario_id"])) {
             cursor: pointer;
             box-shadow: 0 15px 36px rgba(37,99,235,.32);
             font-size: 1.2rem;
+        }
+
+        .a11y-settings-link {
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 12px;
+            border-radius: 10px;
+            background: var(--primary);
+            color: #fff;
+            font-size: .76rem;
+            font-weight: 800;
+            text-decoration: none;
         }
 
         .libras-widget-slot {
@@ -1967,9 +2007,11 @@ if (!empty($_SESSION["usuario_id"])) {
             }
         }
     </style>
+<link rel="stylesheet" href="static/css/app-shell.css">
+<link rel="stylesheet" href="static/css/accessibility.css">
 </head>
 
-<body>
+<body class="app-shell app-preview">
 <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
 
 <!-- =============================================================
@@ -2098,7 +2140,7 @@ if (!empty($_SESSION["usuario_id"])) {
 
                         <div class="camera-frame">
                             <div class="camera-grid"></div>
-                            <div class="hand-symbol">🤟</div>
+                            <div class="hand-symbol"><i class="fa-solid fa-hands-asl-interpreting"></i></div>
                             <div class="scan-line"></div>
                         </div>
 
@@ -2418,7 +2460,7 @@ if (!empty($_SESSION["usuario_id"])) {
                     <div>
                         <div class="metric-number"><span data-counter="2">0</span></div>
                         <h3>Sentidos de tradução</h3>
-                        <p>LIBRAS ↔ Português como visão de evolução do produto.</p>
+                        <p>LIBRAS e Português como visão de evolução do produto.</p>
                     </div>
                     <div class="mini-bars" aria-hidden="true">
                         <span style="height:62%"></span>
@@ -2835,70 +2877,6 @@ if (!empty($_SESSION["usuario_id"])) {
     </div>
 </footer>
 
-<!-- =============================================================
-     ESPAÇO RESERVADO PARA VLibras / Hand Talk
-     ============================================================= -->
-<div
-    class="libras-widget-slot"
-    id="librasWidgetSlot"
-    role="note"
-    aria-label="Espaço reservado para widget de tradução em LIBRAS"
-    title="Integração preparada para VLibras ou Hand Talk"
->
-    <i class="fa-solid fa-hands-asl-interpreting" aria-hidden="true"></i>
-    <span>Espaço para VLibras / Hand Talk</span>
-</div>
-
-<!-- =============================================================
-     ACESSIBILIDADE
-     ============================================================= -->
-<div class="a11y-wrap">
-    <div class="a11y-panel" id="a11yPanel">
-        <h3>Acessibilidade</h3>
-
-        <div class="a11y-row">
-            <span>Modo escuro</span>
-            <button class="a11y-toggle" id="darkToggle" type="button" aria-pressed="false">
-                <i class="fa-solid fa-moon"></i>
-            </button>
-        </div>
-
-        <div class="a11y-row">
-            <span>Tamanho da fonte</span>
-            <div class="a11y-mini">
-                <button type="button" data-font="pequena" aria-label="Fonte pequena">A−</button>
-                <button type="button" data-font="media" class="active" aria-label="Fonte média">A</button>
-                <button type="button" data-font="grande" aria-label="Fonte grande">A+</button>
-            </div>
-        </div>
-
-        <div class="a11y-row">
-            <span>Alto contraste</span>
-            <button class="a11y-toggle" id="contrastToggle" type="button" aria-pressed="false">
-                <i class="fa-solid fa-circle-half-stroke"></i>
-            </button>
-        </div>
-
-        <div class="a11y-row">
-            <span>Leitura em voz alta</span>
-            <button class="a11y-toggle" id="ttsToggle" type="button" aria-pressed="false">
-                <i class="fa-solid fa-volume-high"></i>
-            </button>
-        </div>
-    </div>
-
-    <button
-        class="a11y-fab"
-        id="a11yFab"
-        type="button"
-        aria-label="Abrir opções de acessibilidade"
-        aria-expanded="false"
-        aria-controls="a11yPanel"
-    >
-        <i class="fa-solid fa-universal-access" aria-hidden="true"></i>
-    </button>
-</div>
-
 <script>
     /* =========================================================
        PREFERÊNCIAS DE ACESSIBILIDADE
@@ -2934,7 +2912,11 @@ if (!empty($_SESSION["usuario_id"])) {
 
     function applyTheme(theme) {
         const html = document.documentElement;
-        const dark = theme === 'escuro';
+        const dark = theme === 'escuro' || (
+            theme === 'automatico'
+            && window.matchMedia
+            && window.matchMedia('(prefers-color-scheme: dark)').matches
+        );
 
         html.toggleAttribute('data-theme', dark);
 
@@ -3009,14 +2991,8 @@ if (!empty($_SESSION["usuario_id"])) {
         'click',
         function () {
 
-            const current =
-                safeGet(
-                    PREF_KEYS.theme,
-                    'claro'
-                );
-
             const next =
-                current === 'escuro'
+                document.documentElement.getAttribute('data-theme') === 'dark'
                     ? 'claro'
                     : 'escuro';
 
@@ -3395,7 +3371,7 @@ if (!empty($_SESSION["usuario_id"])) {
 
     const a11yFab =
         document.getElementById(
-            'a11yFab'
+            'a11yToggle'
         );
 
     const a11yPanel =
@@ -3415,6 +3391,11 @@ if (!empty($_SESSION["usuario_id"])) {
             a11yPanel.classList.toggle(
                 'open',
                 open
+            );
+
+            a11yPanel.setAttribute(
+                'aria-hidden',
+                String(!open)
             );
 
             a11yFab.setAttribute(
@@ -3441,6 +3422,11 @@ if (!empty($_SESSION["usuario_id"])) {
             ) {
                 a11yPanel?.classList.remove(
                     'open'
+                );
+
+                a11yPanel?.setAttribute(
+                    'aria-hidden',
+                    'true'
                 );
 
                 a11yFab?.setAttribute(
@@ -3639,6 +3625,11 @@ if (!empty($_SESSION["usuario_id"])) {
                 'open'
             );
 
+            a11yPanel?.setAttribute(
+                'aria-hidden',
+                'true'
+            );
+
             a11yFab?.setAttribute(
                 'aria-expanded',
                 'false'
@@ -3652,5 +3643,6 @@ if (!empty($_SESSION["usuario_id"])) {
     );
 </script>
 
+<script src="static/js/acessibility.js" defer></script>
 </body>
 </html>
