@@ -29,4 +29,4 @@ PATCH_USUARIO_SELO.md
 README_INSTALACAO.md
 user.ini
 database/
-templates/configs/email.local.example.php
+templates/configs/email.local.php

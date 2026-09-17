@@ -16,6 +16,7 @@ $navigation = [
 ];
 if ($currentPage === 'chats.php') $currentPage = 'social.php';
 ?>
+<link rel="stylesheet" href="../static/css/sidebar-viewport.css">
 <aside class="sidebar unified-sidebar" id="<?= htmlspecialchars($sidebarId) ?>" aria-label="Navegação principal">
   <div class="sidebar-top">
     <a class="logo" href="home.php" aria-label="LibrasHub — início">

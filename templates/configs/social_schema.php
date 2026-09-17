@@ -15,9 +15,15 @@ function ensureSocialSchema(PDO $pdo): void
         $index = $pdo->prepare("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='social_posts' AND index_name='idx_social_posts_usuario_data'");
         $index->execute();
         if (!(bool)$index->fetchColumn()) $pdo->exec('ALTER TABLE social_posts ADD INDEX idx_social_posts_usuario_data(id_usuario,criado_em)');
+        $index = $pdo->prepare("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='social_mensagens' AND index_name='idx_social_mensagens_resposta'");
+        $index->execute();
+        if (!(bool)$index->fetchColumn()) $pdo->exec('ALTER TABLE social_mensagens ADD INDEX idx_social_mensagens_resposta(id_mensagem_resposta)');
+        $index = $pdo->prepare("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='social_post_comentarios' AND index_name='idx_social_comentarios_pai'");
+        $index->execute();
+        if (!(bool)$index->fetchColumn()) $pdo->exec('ALTER TABLE social_post_comentarios ADD INDEX idx_social_comentarios_pai(id_comentario_pai)');
     };
 
-    $required = ['roles', 'usuario_roles', 'social_comunidades', 'social_comunidade_membros', 'social_posts', 'social_post_curtidas', 'social_post_comentarios', 'social_chats', 'social_chat_membros', 'social_mensagens'];
+    $required = ['roles', 'usuario_roles', 'social_comunidades', 'social_comunidade_membros', 'social_posts', 'social_post_curtidas', 'social_post_comentarios', 'social_comentario_curtidas', 'social_chats', 'social_chat_membros', 'social_mensagens'];
     $missing = false;
     foreach ($required as $table) {
         $check = $pdo->prepare('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=?');
@@ -25,7 +31,7 @@ function ensureSocialSchema(PDO $pdo): void
         if (!(bool)$check->fetchColumn()) {$missing = true; break;}
     }
     if (!$missing) {
-        foreach ([['usuario','is_community_user'],['usuario','social_handle'],['locais','latitude'],['locais','longitude'],['locais','visualizacoes'],['social_posts','midia_tipo'],['social_posts','editado_em'],['social_mensagens','editado_em']] as [$table,$column]) {
+        foreach ([['usuario','is_community_user'],['usuario','social_handle'],['usuario','foto_perfil'],['usuario','banner_perfil'],['usuario','status_visibilidade'],['usuario','ultimo_acesso_em'],['locais','latitude'],['locais','longitude'],['locais','visualizacoes'],['social_posts','midia_tipo'],['social_posts','editado_em'],['social_post_comentarios','id_comentario_pai'],['social_mensagens','editado_em'],['social_mensagens','id_mensagem_resposta']] as [$table,$column]) {
             $check = $pdo->prepare('SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? AND column_name=?');
             $check->execute([$table,$column]);
             if (!(bool)$check->fetchColumn()) {$missing = true; break;}

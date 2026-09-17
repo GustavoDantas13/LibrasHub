@@ -3,13 +3,12 @@
 session_start();
 
 require_once "configs/config.php";
-$communityColumn = $pdo->query("SHOW COLUMNS FROM usuario LIKE 'is_community_user'")->fetch();
-if (!$communityColumn) {
-    $pdo->exec("ALTER TABLE usuario ADD COLUMN is_community_user TINYINT(1) NOT NULL DEFAULT 0 AFTER tp_usuario");
-}
+require_once "configs/social_schema.php";
+require_once "configs/upload_helpers.php";
+ensureSocialSchema($pdo);
 
 if (empty($_SESSION["usuario_id"])) {
-    header("Location: login.php");
+    header("Location: Login.php");
     exit;
 }
 
@@ -46,47 +45,6 @@ function buscarUsuario($pdo, $id)
     );
 }
 
-function salvarMidiaPerfil(array $arquivo, string $tipo, int $idUsuario, ?string $atual): ?string
-{
-    if (($arquivo["error"] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-        return $atual;
-    }
-
-    if (($arquivo["error"] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK || !is_uploaded_file($arquivo["tmp_name"] ?? "")) {
-        throw new RuntimeException("Não foi possível receber a imagem de " . $tipo . ".");
-    }
-
-    if ((int) ($arquivo["size"] ?? 0) > 5 * 1024 * 1024) {
-        throw new RuntimeException("A imagem de " . $tipo . " deve ter no máximo 5 MB.");
-    }
-
-    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($arquivo["tmp_name"]);
-    $extensoes = ["image/jpeg" => "jpg", "image/png" => "png", "image/webp" => "webp"];
-    if (!isset($extensoes[$mime])) {
-        throw new RuntimeException("Use JPG, PNG ou WebP na imagem de " . $tipo . ".");
-    }
-
-    $pasta = dirname(__DIR__) . "/static/uploads/perfis/" . $idUsuario;
-    if (!is_dir($pasta) && !mkdir($pasta, 0755, true)) {
-        throw new RuntimeException("Não foi possível preparar a pasta de imagens do perfil.");
-    }
-
-    $nome = $tipo . "_" . bin2hex(random_bytes(10)) . "." . $extensoes[$mime];
-    $destino = $pasta . "/" . $nome;
-    if (!move_uploaded_file($arquivo["tmp_name"], $destino)) {
-        throw new RuntimeException("Não foi possível salvar a imagem de " . $tipo . ".");
-    }
-
-    if ($atual && str_starts_with($atual, "../static/uploads/perfis/")) {
-        $antigo = dirname(__DIR__) . "/" . ltrim(substr($atual, 3), "/");
-        if (is_file($antigo)) {
-            @unlink($antigo);
-        }
-    }
-
-    return "../static/uploads/perfis/" . $idUsuario . "/" . $nome;
-}
-
 $usuario = buscarUsuario(
     $pdo,
     $idUsuario
@@ -96,7 +54,7 @@ if (!$usuario) {
     session_destroy();
 
     header(
-        "Location: login.php"
+        "Location: Login.php"
     );
 
     exit;
@@ -118,9 +76,10 @@ if (
         ?? ""
     );
 
-    $statusVisibilidade = ($_POST["status_visibilidade"] ?? "visivel") === "oculto"
-        ? "oculto"
-        : "visivel";
+    $statusVisibilidade =
+        ($_POST["status_visibilidade"] ?? "visivel") === "oculto"
+            ? "oculto"
+            : "visivel";
 
     if (
         $nome === ""
@@ -173,27 +132,26 @@ if (
 
             } else {
 
-                $fotoPerfil = salvarMidiaPerfil(
-                    $_FILES["foto_perfil"] ?? [],
-                    "foto",
-                    $idUsuario,
-                    $usuario["foto_perfil"] ?? null
-                );
+                $newAvatar = null;
+                $newBanner = null;
+                try {
+                    $newAvatar = storeImageUpload($_FILES["foto_perfil"] ?? [], "avatars");
+                    $newBanner = storeImageUpload($_FILES["banner_perfil"] ?? [], "profiles/banners");
+                } catch (RuntimeException $uploadError) {
+                    if ($newAvatar) removeStoredUpload($newAvatar);
+                    $erro = $uploadError->getMessage();
+                }
 
-                $bannerPerfil = salvarMidiaPerfil(
-                    $_FILES["banner_perfil"] ?? [],
-                    "banner",
-                    $idUsuario,
-                    $usuario["banner_perfil"] ?? null
-                );
-
+                if ($erro !== "") {
+                    // A validação do upload já produziu uma mensagem segura para a interface.
+                } else {
                 $stmt = $pdo->prepare("
                     UPDATE usuario
                     SET
                         nm_usuario = ?,
                         email_usuario = ?,
-                        foto_perfil = ?,
-                        banner_perfil = ?,
+                        foto_perfil = COALESCE(?, foto_perfil),
+                        banner_perfil = COALESCE(?, banner_perfil),
                         status_visibilidade = ?
                     WHERE id_usuario = ?
                 ");
@@ -201,11 +159,14 @@ if (
                 $stmt->execute([
                     $nome,
                     $email,
-                    $fotoPerfil,
-                    $bannerPerfil,
+                    $newAvatar,
+                    $newBanner,
                     $statusVisibilidade,
                     $idUsuario
                 ]);
+
+                if ($newAvatar) removeStoredUpload((string)($usuario["foto_perfil"] ?? ""));
+                if ($newBanner) removeStoredUpload((string)($usuario["banner_perfil"] ?? ""));
 
                 $_SESSION["usuario_nome"] =
                     $nome;
@@ -220,11 +181,8 @@ if (
                     $pdo,
                     $idUsuario
                 );
+                }
             }
-
-        } catch (RuntimeException $e) {
-
-            $erro = $e->getMessage();
 
         } catch (PDOException $e) {
 
@@ -241,6 +199,8 @@ if (
 ) {
 
     try {
+
+        authRevokeRememberToken($pdo);
 
         $stmt = $pdo->prepare("
             DELETE FROM usuario
@@ -278,7 +238,7 @@ if (
             session_destroy();
 
             header(
-                "Location: login.php"
+                "Location: ../index.php"
             );
 
             exit;
@@ -383,17 +343,16 @@ $ehAdmin =
         )
     ) === "administrador";
 
-$statusOnline =
+$estaOnline =
     ($usuario["status_visibilidade"] ?? "visivel") === "visivel"
     && !empty($usuario["ultimo_acesso_em"])
-    && strtotime((string) $usuario["ultimo_acesso_em"]) >= time() - 300;
+    && strtotime((string)$usuario["ultimo_acesso_em"]) >= time() - 300;
 
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
-    <link rel="icon" type="image/png" href="../static/images/librashub-logo.png">
 
 <meta charset="UTF-8">
 
@@ -1311,15 +1270,21 @@ body{
 </style>
 
 <link rel="stylesheet" href="../static/css/sidebar.css">
+<link rel="stylesheet" href="../static/css/profile-settings.css">
 </head>
 
-<body>
+<body class="app-shell app-dashboard profile-settings-page">
 
 
 <?php $sidebarId = "sidebarMenu"; include __DIR__ . "/partials/sidebar.php"; ?>
 
 
 <main class="content">
+
+    <a class="profile-settings-back" href="perfil.php?id=<?= $idUsuario ?>">
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        Voltar ao meu perfil
+    </a>
 
 
     <?php if ($erro): ?>
@@ -1379,13 +1344,11 @@ body{
 
 
             <div class="avatar-lg">
-
                 <?php if (!empty($usuario["foto_perfil"])): ?>
-                    <img src="<?= htmlspecialchars((string) $usuario["foto_perfil"], ENT_QUOTES, "UTF-8") ?>" alt="Foto de perfil" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">
+                    <img src="<?= htmlspecialchars((string)$usuario["foto_perfil"], ENT_QUOTES, "UTF-8") ?>" alt="Foto de perfil de <?= htmlspecialchars((string)$usuario["nm_usuario"], ENT_QUOTES, "UTF-8") ?>">
                 <?php else: ?>
                     <?= htmlspecialchars($inicial, ENT_QUOTES, "UTF-8") ?>
                 <?php endif; ?>
-
             </div>
 
 
@@ -1618,32 +1581,13 @@ body{
                     <div class="info-field">
 
                         <div class="info-label">
-                            Tipo de Usuário
-                        </div>
-
-                        <div class="info-value">
-
-                            <?= htmlspecialchars(
-                                $usuario["tp_usuario"],
-                                ENT_QUOTES,
-                                "UTF-8"
-                            ) ?>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="info-field">
-
-                        <div class="info-label">
                             Status
                         </div>
 
                         <div
                             class="info-value"
                             style="
-                                color:<?= $statusOnline ? "var(--success)" : "var(--text-muted)" ?>;
+                                color:var(--success);
                                 font-weight:600;
                             "
                         >
@@ -1656,7 +1600,7 @@ body{
                                 "
                             ></i>
 
-                            <?= $statusOnline ? "Online" : "Offline" ?>
+                            <?= $estaOnline ? "Online" : "Offline" ?>
                         </div>
 
                     </div>
@@ -1802,6 +1746,34 @@ body{
 
                 <input type="hidden" name="acao" value="atualizar_perfil">
 
+                <div class="profile-photo-field">
+                    <div class="profile-photo-preview" id="profilePhotoPreview" aria-hidden="true">
+                        <?php if (!empty($usuario["foto_perfil"])): ?>
+                            <img src="<?= htmlspecialchars((string)$usuario["foto_perfil"], ENT_QUOTES, "UTF-8") ?>" alt="">
+                        <?php else: ?>
+                            <span><?= htmlspecialchars($inicial, ENT_QUOTES, "UTF-8") ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="field">
+                        <label for="editFoto">Foto de perfil</label>
+                        <input type="file" id="editFoto" name="foto_perfil" accept="image/jpeg,image/png,image/webp" aria-describedby="editFotoHint">
+                        <small id="editFotoHint">JPG, PNG ou WebP, até 5 MB.</small>
+                    </div>
+                </div>
+
+                <div class="profile-banner-field">
+                    <div class="profile-banner-preview" id="profileBannerPreview" aria-hidden="true">
+                        <?php if (!empty($usuario["banner_perfil"])): ?>
+                            <img src="<?= htmlspecialchars((string)$usuario["banner_perfil"], ENT_QUOTES, "UTF-8") ?>" alt="">
+                        <?php endif; ?>
+                    </div>
+                    <div class="field">
+                        <label for="editBanner">Imagem de capa</label>
+                        <input type="file" id="editBanner" name="banner_perfil" accept="image/jpeg,image/png,image/webp" aria-describedby="editBannerHint">
+                        <small id="editBannerHint">JPG, PNG ou WebP, até 5 MB. Formato horizontal recomendado.</small>
+                    </div>
+                </div>
+
 
                 <div class="field">
 
@@ -1822,7 +1794,6 @@ body{
 
                 <div
                     class="field"
-                    style="margin-bottom:0;"
                 >
 
                     <label>
@@ -1840,23 +1811,11 @@ body{
                 </div>
 
                 <div class="field">
-                    <label for="editStatus">Visibilidade do status</label>
-                    <select id="editStatus" name="status_visibilidade">
+                    <label for="editVisibilidade">Status de presença</label>
+                    <select id="editVisibilidade" name="status_visibilidade">
                         <option value="visivel" <?= ($usuario["status_visibilidade"] ?? "visivel") === "visivel" ? "selected" : "" ?>>Mostrar quando estou online</option>
-                        <option value="oculto" <?= ($usuario["status_visibilidade"] ?? "visivel") === "oculto" ? "selected" : "" ?>>Ocultar status (sempre offline)</option>
+                        <option value="oculto" <?= ($usuario["status_visibilidade"] ?? "visivel") === "oculto" ? "selected" : "" ?>>Ocultar presença</option>
                     </select>
-                </div>
-
-                <div class="field">
-                    <label for="editFoto">Foto do perfil</label>
-                    <input type="file" id="editFoto" name="foto_perfil" accept="image/jpeg,image/png,image/webp">
-                    <small>JPG, PNG ou WebP, até 5 MB.</small>
-                </div>
-
-                <div class="field" style="margin-bottom:0;">
-                    <label for="editBanner">Banner do perfil</label>
-                    <input type="file" id="editBanner" name="banner_perfil" accept="image/jpeg,image/png,image/webp">
-                    <small>Esta imagem será exibida no topo do seu perfil Social.</small>
                 </div>
 
 
@@ -1879,9 +1838,9 @@ body{
 
 
             <button
-                type="button"
+                type="submit"
+                form="formEditarPerfil"
                 class="btn"
-                onclick="salvarPerfil()"
                 id="btnSalvarModal"
                 style="
                     display:flex;
@@ -2069,6 +2028,12 @@ const PHP_EMAIL =
         JSON_UNESCAPED_UNICODE
     ) ?>;
 
+const PHP_VISIBILIDADE =
+    <?= json_encode(
+        $usuario["status_visibilidade"] ?? "visivel",
+        JSON_UNESCAPED_UNICODE
+    ) ?>;
+
 
 function abrirModal(id){
 
@@ -2159,6 +2124,13 @@ function abrirModalEditar(){
         )
         .value =
             PHP_EMAIL;
+
+    document
+        .getElementById(
+            "editVisibilidade"
+        )
+        .value =
+            PHP_VISIBILIDADE;
 
     ocultarAlertaEditar();
 
@@ -2288,12 +2260,113 @@ function salvarPerfil(){
         '<i class="fa-solid fa-spinner fa-spin"></i> Salvando…';
 
 
-    document
-        .getElementById(
-            "formEditarPerfil"
-        )
-        .submit();
+    var form =
+        document.createElement(
+            "form"
+        );
+
+    form.method =
+        "POST";
+
+    form.action =
+        "usuario.php";
+
+    form.style.display =
+        "none";
+
+
+    function addField(
+        nomeCampo,
+        valor
+    ){
+
+        var input =
+            document.createElement(
+                "input"
+            );
+
+        input.type =
+            "hidden";
+
+        input.name =
+            nomeCampo;
+
+        input.value =
+            valor;
+
+        form.appendChild(
+            input
+        );
+    }
+
+
+    addField(
+        "acao",
+        "atualizar_perfil"
+    );
+
+    addField(
+        "nome",
+        nome
+    );
+
+    addField(
+        "email",
+        email
+    );
+
+
+    document.body.appendChild(
+        form
+    );
+
+    form.submit();
 }
+
+document
+    .getElementById("editFoto")
+    .addEventListener("change", function(){
+        var preview = document.getElementById("profilePhotoPreview");
+        var file = this.files && this.files[0];
+        if (!file) return;
+        if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size > 5 * 1024 * 1024) {
+            this.value = "";
+            mostrarAlertaEditar("Use JPG, PNG ou WebP de até 5 MB.", "error");
+            return;
+        }
+        var url = URL.createObjectURL(file);
+        preview.innerHTML = '<img src="' + url + '" alt="Prévia da nova foto de perfil">';
+    });
+
+document
+    .getElementById("editBanner")
+    .addEventListener("change", function(){
+        var preview = document.getElementById("profileBannerPreview");
+        var file = this.files && this.files[0];
+        if (!file) return;
+        if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size > 5 * 1024 * 1024) {
+            this.value = "";
+            mostrarAlertaEditar("Use JPG, PNG ou WebP de até 5 MB para a capa.", "error");
+            return;
+        }
+        var url = URL.createObjectURL(file);
+        preview.innerHTML = '<img src="' + url + '" alt="Prévia da nova imagem de capa">';
+    });
+
+document
+    .getElementById("formEditarPerfil")
+    .addEventListener("submit", function(evento){
+        var nome = document.getElementById("editNome").value.trim();
+        var email = document.getElementById("editEmail").value.trim();
+        if (!nome || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            evento.preventDefault();
+            mostrarAlertaEditar("Revise o nome e o email informados.", "error");
+            return;
+        }
+        var btn = document.getElementById("btnSalvarModal");
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando…';
+    });
 
 
 function abrirModalExcluir(){
@@ -2398,169 +2471,6 @@ function verificarConfirmacao(){
 
 })();
 
-</script>
-
-
-<button
-    class="menu-toggle"
-    id="menuToggle"
-    type="button"
-    aria-label="Abrir menu"
-    aria-expanded="false"
-    aria-controls="sidebarMenu"
->
-    &#9776;
-</button>
-
-
-<div
-    class="sidebar-overlay"
-    id="sidebarOverlay"
-></div>
-
-
-<script>
-(function(){
-
-    var btn =
-        document.getElementById(
-            "menuToggle"
-        );
-
-    var sidebar =
-        document.querySelector(
-            ".sidebar"
-        );
-
-    var overlay =
-        document.getElementById(
-            "sidebarOverlay"
-        );
-
-    if(
-        !btn ||
-        !sidebar ||
-        !overlay
-    ){
-        return;
-    }
-
-    function openMenu(){
-
-        sidebar.classList.add(
-            "open"
-        );
-
-        overlay.classList.add(
-            "open"
-        );
-
-        btn.innerHTML =
-            "&#10005;";
-
-        btn.setAttribute(
-            "aria-label",
-            "Fechar menu"
-        );
-
-        btn.setAttribute(
-            "aria-expanded",
-            "true"
-        );
-
-        document.body.style.overflow =
-            "hidden";
-    }
-
-    function closeMenu(){
-
-        sidebar.classList.remove(
-            "open"
-        );
-
-        overlay.classList.remove(
-            "open"
-        );
-
-        btn.innerHTML =
-            "&#9776;";
-
-        btn.setAttribute(
-            "aria-label",
-            "Abrir menu"
-        );
-
-        btn.setAttribute(
-            "aria-expanded",
-            "false"
-        );
-
-        if(
-            !document.querySelector(
-                ".modal-backdrop.open"
-            )
-        ){
-            document.body.style.overflow =
-                "";
-        }
-    }
-
-    btn.addEventListener(
-        "click",
-        function(){
-
-            sidebar.classList.contains(
-                "open"
-            )
-                ? closeMenu()
-                : openMenu();
-        }
-    );
-
-    overlay.addEventListener(
-        "click",
-        closeMenu
-    );
-
-    sidebar
-        .querySelectorAll("a")
-        .forEach(
-            function(link){
-
-                link.addEventListener(
-                    "click",
-                    closeMenu
-                );
-            }
-        );
-
-    document.addEventListener(
-        "keydown",
-        function(event){
-
-            if(
-                event.key === "Escape" &&
-                sidebar.classList.contains("open")
-            ){
-                closeMenu();
-            }
-        }
-    );
-
-    window.addEventListener(
-        "resize",
-        function(){
-
-            if(
-                window.innerWidth > 900 &&
-                sidebar.classList.contains("open")
-            ){
-                closeMenu();
-            }
-        }
-    );
-
-})();
 </script>
 
 

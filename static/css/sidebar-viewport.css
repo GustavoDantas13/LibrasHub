@@ -1,0 +1,15 @@
+.unified-sidebar {
+  overflow: hidden !important;
+  padding-block: clamp(8px, 2vh, 20px) !important;
+}
+
+@media (max-width: 900px) {
+  .unified-sidebar {
+    overflow-y: auto !important;
+    scrollbar-width: none;
+  }
+
+  .unified-sidebar::-webkit-scrollbar {
+    display: none;
+  }
+}

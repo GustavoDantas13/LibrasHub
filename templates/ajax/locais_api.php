@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../configs/config.php';
+session_start();
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
@@ -15,6 +15,8 @@ function out(bool $ok, array $data = [], int $status = 200): never
 if (empty($_SESSION['usuario_id'])) {
     out(false, ['message' => 'Faça login para acessar os locais.'], 401);
 }
+
+require_once __DIR__ . '/../configs/config.php';
 
 $uid = (int) $_SESSION['usuario_id'];
 if (empty($_SESSION['locais_csrf'])) {

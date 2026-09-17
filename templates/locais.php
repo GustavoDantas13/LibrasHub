@@ -1,10 +1,11 @@
 <?php
+session_start();
 require_once __DIR__ . '/configs/config.php';
+require_once __DIR__ . '/configs/social_schema.php';
 if (empty($_SESSION['usuario_id'])) {
     header('Location: Login.php?redirect=locais.php');
     exit;
 }
-require_once __DIR__ . '/configs/social_schema.php';
 ensureSocialSchema($pdo);
 
 $uid = (int) $_SESSION['usuario_id'];
@@ -21,22 +22,18 @@ if (empty($_SESSION['locais_csrf'])) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('libras_theme') || 'claro';
+                var dark = theme === 'escuro' || (theme === 'automatico' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+                if (localStorage.getItem('libras_contrast') === 'on') document.documentElement.classList.add('high-contrast');
+            } catch (error) {}
+        })();
+    </script>
     <title>Locais acessíveis | LibrasHub</title>
     <link rel="icon" href="../static/images/librashub-logo.png">
-    <script>
-    (function () {
-        try {
-            var theme = localStorage.getItem('libras_theme') || 'claro';
-            if (theme === 'automatico' && window.matchMedia) {
-                theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro';
-            }
-            if (theme === 'escuro') document.documentElement.setAttribute('data-theme', 'dark');
-            if ((localStorage.getItem('libras_contrast') || 'off') === 'on') document.documentElement.classList.add('high-contrast');
-            var sizes = {pequena: .9, media: 1, grande: 1.15};
-            document.documentElement.style.setProperty('--font-scale', sizes[localStorage.getItem('libras_fontsize')] || 1);
-        } catch (error) {}
-    }());
-    </script>
     <link rel="stylesheet" href="../static/css/style.css">
     <link rel="stylesheet" href="../static/css/app-shell.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
@@ -50,8 +47,6 @@ if (empty($_SESSION['locais_csrf'])) {
     <div class="ui-container">
         <header class="places-header">
             <div>
-                <a class="ui-button ui-button--secondary" href="social.php"><i class="fa-solid fa-arrow-left"></i>Voltar ao Social</a>
-                <span class="ui-eyebrow"><i class="fa-solid fa-universal-access"></i> Guia colaborativo</span>
                 <h1 class="page-title">Locais acessíveis</h1>
                 <p class="page-subtitle">Descubra e compartilhe estabelecimentos com recursos de acessibilidade.</p>
             </div>
@@ -98,6 +93,15 @@ if (empty($_SESSION['locais_csrf'])) {
     <article class="place-modal__card ui-card" id="detailContent"></article>
 </div>
 
+<div class="place-lightbox" id="placeLightbox" role="dialog" aria-modal="true" aria-label="Imagem ampliada" hidden>
+    <button class="place-lightbox__close" id="closeLightbox" type="button" aria-label="Fechar imagem ampliada"><i class="fa-solid fa-xmark"></i></button>
+    <img id="lightboxImage" src="" alt="">
+</div>
+
+<div class="place-notice" id="placeNotice" role="dialog" aria-modal="true" aria-labelledby="placeNoticeTitle" hidden>
+    <div class="place-notice__card ui-card"><header><h2 id="placeNoticeTitle">LibrasHub</h2><button id="closePlaceNotice" type="button" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></header><p id="placeNoticeMessage"></p><button class="ui-button" id="confirmPlaceNotice" type="button">Entendi</button></div>
+</div>
+
 <div class="place-modal" id="formModal" role="dialog" aria-modal="true" aria-labelledby="formTitle">
     <section class="place-modal__card ui-card">
         <header class="place-modal__header">
@@ -134,9 +138,8 @@ if (empty($_SESSION['locais_csrf'])) {
 
             <section class="place-picker full" aria-labelledby="pickerTitle">
                 <div class="place-picker__heading">
-                    <div><h3 id="pickerTitle">Posição no mapa *</h3><p>Localize pelo endereço ou clique no mapa para marcar o ponto exato.</p></div>
+                    <div><h3 id="pickerTitle">Posição no mapa *</h3><p>O marcador será posicionado automaticamente após o preenchimento do endereço. Confira e confirme.</p></div>
                     <div class="place-picker__actions">
-                        <button class="ui-button ui-button--secondary" id="locateAddress" type="button"><i class="fa-solid fa-location-crosshairs"></i>Localizar endereço</button>
                         <button class="ui-button" id="confirmLocation" type="button" disabled><i class="fa-solid fa-check"></i>Confirmar este ponto</button>
                     </div>
                 </div>
@@ -172,6 +175,12 @@ const placesFilters = document.getElementById('placesFilters');
 const mapStatus = document.getElementById('mapStatus');
 const detailModal = document.getElementById('detailModal');
 const detailContent = document.getElementById('detailContent');
+const placeLightbox = document.getElementById('placeLightbox');
+const lightboxImage = document.getElementById('lightboxImage');
+const closeLightbox = document.getElementById('closeLightbox');
+const placeNotice = document.getElementById('placeNotice');
+const placeNoticeTitle = document.getElementById('placeNoticeTitle');
+const placeNoticeMessage = document.getElementById('placeNoticeMessage');
 const formModal = document.getElementById('formModal');
 const placeForm = document.getElementById('placeForm');
 const idLocal = document.getElementById('idLocal');
@@ -186,7 +195,6 @@ const imagens = document.getElementById('imagens');
 const imagesLabel = document.getElementById('imagesLabel');
 const imagePreview = document.getElementById('imagePreview');
 const pickerStatus = document.getElementById('pickerStatus');
-const locateAddress = document.getElementById('locateAddress');
 const confirmLocation = document.getElementById('confirmLocation');
 const cep = document.getElementById('cep');
 const cepStatus = document.getElementById('cepStatus');
@@ -198,11 +206,23 @@ const uf = document.getElementById('uf');
 const esc = value => String(value ?? '').replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));
 const labels = {libras:'Atendimento em Libras',rampa:'Rampa',elevador:'Elevador',banheiro:'Banheiro adaptado',piso_tatil:'Piso tátil',braille:'Braille',atendimento_prioritario:'Atendimento prioritário',vaga_pcd:'Vaga PCD'};
 let timer;
+let addressTimer;
 let placesMap = null;
 let pickerMap = null;
 let pickerMarker = null;
 let pendingCoordinateCount = 0;
 const placeMarkers = new Map();
+
+function showPlaceNotice(message, title = 'LibrasHub') {
+    placeNoticeTitle.textContent = title;
+    placeNoticeMessage.textContent = message;
+    placeNotice.hidden = false;
+}
+
+function hidePlaceNotice() { placeNotice.hidden = true; }
+document.getElementById('closePlaceNotice').addEventListener('click', hidePlaceNotice);
+document.getElementById('confirmPlaceNotice').addEventListener('click', hidePlaceNotice);
+placeNotice.addEventListener('click', event => { if (event.target === placeNotice) hidePlaceNotice(); });
 
 async function api(url, options) {
     const response = await fetch(url, options);
@@ -271,7 +291,7 @@ async function detail(id) {
             <button class="place-modal__close" type="button" data-close aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
         </header>
         ${canManage(local) ? managementActions(local) : ''}
-        <div class="place-gallery">${gallery.map((image, index) => `<img src="${esc(image)}" alt="${esc(local.nome)}, imagem ${index + 1}">`).join('')}</div>
+        <div class="place-gallery">${gallery.map((image, index) => `<button class="place-gallery__button" type="button" data-lightbox-image="${esc(image)}" data-lightbox-alt="${esc(local.nome)}, imagem ${index + 1}" aria-label="Ampliar imagem ${index + 1} de ${esc(local.nome)}"><img src="${esc(image)}" alt="${esc(local.nome)}, imagem ${index + 1}"></button>`).join('')}</div>
         <div class="place-details-grid">
             <div><h3>Sobre</h3><p>${esc(local.descricao)}</p><h3>Acessibilidade</h3><div class="accessibility-tags">${accessibility.map(item => `<span class="accessibility-tag">${esc(labels[item] || item)}</span>`).join('') || '<span>Não informado</span>'}</div></div>
             <div><h3>Endereço</h3><p>${esc(address)}</p><a class="ui-button" target="_blank" rel="noopener" href="${maps}"><i class="fa-solid fa-map-location-dot"></i>Conferir no mapa</a><h3>Funcionamento</h3><p>${esc(local.horario_funcionamento)}</p><p>${esc(local.datas_funcionamento || 'Datas não informadas')}</p></div>
@@ -282,7 +302,7 @@ async function detail(id) {
         </section>`;
         detailModal.classList.add('is-open');
     } catch (error) {
-        alert(error.message);
+        showPlaceNotice(error.message, 'Não foi possível abrir o local');
     }
 }
 
@@ -398,7 +418,7 @@ async function openEditForm(id) {
             pickerStatus.textContent = 'Este cadastro antigo precisa ter a posição confirmada. Localize o endereço ou clique no mapa.';
         }
     } catch (error) {
-        alert(error.message);
+        showPlaceNotice(error.message, 'Não foi possível editar');
     }
 }
 
@@ -426,13 +446,22 @@ async function deletePlace(id, name) {
         fitAllPlaceMarkers();
         document.querySelectorAll('.place-modal').forEach(modal => modal.classList.remove('is-open'));
         await Promise.all([load(), loadPopular()]);
-        alert(data.message);
+        showPlaceNotice(data.message, 'Local excluído');
     } catch (error) {
-        alert(error.message);
+        showPlaceNotice(error.message, 'Não foi possível excluir');
     }
 }
 
 document.addEventListener('click', event => {
+    const galleryImage = event.target.closest('[data-lightbox-image]');
+    if (galleryImage) {
+        lightboxImage.src = galleryImage.dataset.lightboxImage;
+        lightboxImage.alt = galleryImage.dataset.lightboxAlt || 'Imagem ampliada do local';
+        placeLightbox.hidden = false;
+        document.body.style.overflow = 'hidden';
+        closeLightbox.focus();
+        return;
+    }
     const detailButton = event.target.closest('[data-detail]');
     if (detailButton) detail(detailButton.dataset.detail);
     const editButton = event.target.closest('[data-edit-place]');
@@ -442,14 +471,21 @@ document.addEventListener('click', event => {
     if (event.target.closest('[data-close]')) event.target.closest('.place-modal')?.classList.remove('is-open');
 });
 
+function closePlaceLightbox() {
+    placeLightbox.hidden = true;
+    lightboxImage.src = '';
+    document.body.style.overflow = '';
+}
+
+closeLightbox.addEventListener('click', closePlaceLightbox);
+placeLightbox.addEventListener('click', event => { if (event.target === placeLightbox) closePlaceLightbox(); });
+document.addEventListener('keydown', event => { if (event.key === 'Escape' && !placeLightbox.hidden) closePlaceLightbox(); });
+
 if (window.openForm) openForm.addEventListener('click', openCreateForm);
 placeSearch.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(load, 350); });
 placesFilters.addEventListener('submit', event => { event.preventDefault(); load(); });
 typeFilter.addEventListener('change', load);
 accessibilityFilter.addEventListener('change', load);
-locateAddress.addEventListener('click', async () => {
-    try { await locateFormAddress(); } catch (error) { pickerStatus.textContent = error.message; ensurePickerMap(); }
-});
 confirmLocation.addEventListener('click', () => {
     if (!latitude.value || !longitude.value) return;
     coordinatesConfirmed.value = '1';
@@ -457,7 +493,17 @@ confirmLocation.addEventListener('click', () => {
     pickerStatus.textContent = `Ponto confirmado: ${Number(latitude.value).toFixed(6)}, ${Number(longitude.value).toFixed(6)}.`;
 });
 
-['cep','logradouro','numero','bairro','cidade','uf'].forEach(id => document.getElementById(id).addEventListener('input', clearCoordinates));
+function scheduleAddressLocation() {
+    clearTimeout(addressTimer);
+    const ready = logradouro.value.trim() && numero.value.trim() && cidade.value.trim() && uf.value.trim().length === 2;
+    if (!ready) return;
+    addressTimer = setTimeout(async () => {
+        try { await locateFormAddress(); }
+        catch (error) { pickerStatus.textContent = error.message + ' Você também pode marcar o ponto diretamente no mapa.'; ensurePickerMap(); }
+    }, 650);
+}
+
+['cep','logradouro','numero','bairro','cidade','uf'].forEach(id => document.getElementById(id).addEventListener('input', () => { clearCoordinates(); scheduleAddressLocation(); }));
 
 cep.addEventListener('blur', async () => {
     const value = cep.value.replace(/\D/g, '');
@@ -532,7 +578,7 @@ placeForm.addEventListener('submit', async event => {
         await Promise.all([load(), loadPopular()]);
         formModal.classList.remove('is-open');
         formStatus.textContent = '';
-        alert(data.message);
+        showPlaceNotice(data.message, editing ? 'Alterações salvas' : 'Local publicado');
     } catch (error) {
         formStatus.textContent = error.message;
     } finally {
@@ -551,7 +597,7 @@ document.addEventListener('submit', async event => {
         detail(formData.get('id_local'));
         loadPopular();
     } catch (error) {
-        alert(error.message);
+        showPlaceNotice(error.message, 'Não foi possível avaliar');
     }
 });
 
