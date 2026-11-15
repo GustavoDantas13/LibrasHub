@@ -24,10 +24,10 @@ if (
         ?? ""
     );
 
-    $email = trim(
+    $email = authNormalizeEmail((string) (
         $_POST["email"]
         ?? ""
-    );
+    ));
 
     $tipoUsuario = trim(
         $_POST["tipo_usuario"]
@@ -104,7 +104,7 @@ if (
                 SELECT
                     id_usuario
                 FROM usuario
-                WHERE email_usuario = ?
+                WHERE LOWER(TRIM(email_usuario)) = ?
                 LIMIT 1
             ");
 
@@ -208,6 +208,7 @@ if (
 <html lang="pt-BR">
 
 <head>
+
     <link rel="icon" type="image/png" href="../static/images/librashub-logo.png">
 
     <meta charset="UTF-8">
@@ -223,6 +224,8 @@ if (
         rel="stylesheet"
         href="../static/css/style.css"
     >
+    <link rel="stylesheet" href="../static/css/app-shell.css">
+    <link rel="stylesheet" href="../static/css/auth.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 
     <style>
@@ -253,8 +256,8 @@ if (
         }
 
         .auth-box {
-            width: min(100%, 480px);
-            max-width: 480px;
+            width: min(100%, 46rem);
+            max-width: 46rem;
             margin: 0 auto;
         }
 
@@ -375,20 +378,22 @@ if (
 
         @media (min-width: 1200px) {
             .auth-box {
-                max-width: 500px;
+                max-width: 46rem;
             }
         }
     </style>
 
 </head>
 
-<body>
+<body class="app-shell auth-page auth-register-page">
 
 
 <div class="auth-wrap">
 
 
     <div class="auth-box">
+
+        <a class="auth-brand" href="../index.php"><img src="../static/images/librashub-logo.png" alt=""><span>LibrasHub</span></a>
 
 
         <div class="auth-icon">
@@ -613,11 +618,13 @@ if (
 
             Já tem uma conta?
 
-            <a href="login.php">
+            <a href="Login.php">
                 Entrar
             </a>
 
         </div>
+
+        <a class="auth-back" href="../index.php"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i>Voltar para a página inicial</a>
 
 
     </div>
@@ -626,7 +633,9 @@ if (
 </div>
 
 
-<script src="../static/js/acessibility.js" defer></script>
+<script src="../static/js/password-toggle.js?v=1" defer></script>
+<script src="../static/js/acessibility.js?v=67" defer></script>
+<script src="../static/js/i18n.js" defer></script>
 </body>
 
 </html>

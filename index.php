@@ -2009,6 +2009,21 @@ if (!empty($_SESSION["usuario_id"])) {
     </style>
 <link rel="stylesheet" href="static/css/app-shell.css">
 <link rel="stylesheet" href="static/css/accessibility.css">
+<style>
+/* O Index conserva a identidade clara original, sem herdar o amarelo das telas internas. */
+body.app-preview{
+    --ui-bg:var(--bg);
+    --ui-surface:var(--surface);
+    --ui-surface-soft:var(--surface-2);
+    --ui-text:var(--text);
+    --ui-muted:var(--muted);
+    --ui-border:var(--border);
+    background:
+        radial-gradient(circle at 85% 10%,rgba(37,99,235,.09),transparent 32rem),
+        radial-gradient(circle at 15% 32%,rgba(15,159,152,.08),transparent 28rem),
+        var(--bg)!important;
+}
+</style>
 </head>
 
 <body class="app-shell app-preview">
@@ -3643,6 +3658,6 @@ if (!empty($_SESSION["usuario_id"])) {
     );
 </script>
 
-<script src="static/js/acessibility.js" defer></script>
+<script src="static/js/acessibility.js?v=69" defer></script>
 </body>
 </html>

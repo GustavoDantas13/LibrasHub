@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/configs/config.php';
+session_start();
 
 if (empty($_SESSION['usuario_id'])) {
     header('Location: Login.php?redirect=comunidade.php');

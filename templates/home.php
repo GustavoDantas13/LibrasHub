@@ -83,9 +83,9 @@ html, body {
   width: 100%;
   min-height: 100%;
   overflow-x: hidden;
-  overflow-y: auto;
 }
-body { display: block; margin: 0; }
+html { overflow-y: auto; }
+body { display: block; margin: 0; overflow-y: visible; }
 
 /* Todas as imagens respeitam o espaço disponível */
 img {
@@ -103,6 +103,13 @@ img {
 .tool-block > *,
 .comm-grid > *,
 .content { min-width: 0; }
+.content {
+  height: auto;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow-y: visible;
+}
 
 /* ── SIDEBAR ─────────────────────────────────────────── */
 .sidebar {
@@ -570,6 +577,7 @@ img {
 
 /* ── FOOTER ──────────────────────────────────────────── */
 .hw-footer {
+  margin-top: auto;
   background: var(--sidebar-bg);
   border-top: 1px solid var(--border);
   padding: 36px 72px;
@@ -1052,50 +1060,6 @@ img {
 
 </div><!-- /.content -->
 
-<!-- ── MENU MOBILE ───────────────────────────────────── -->
-<button class="menu-toggle" id="menuToggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebarNav">&#9776;</button>
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-<script>
-/* ── hambúrguer ── */
-(function(){
-  var btn = document.getElementById('menuToggle');
-  var sidebar = document.querySelector('.sidebar');
-  var overlay = document.getElementById('sidebarOverlay');
-  if(!btn || !sidebar) return;
-  function openMenu(){
-    sidebar.classList.add('open');
-    overlay.classList.add('open');
-    btn.innerHTML='&#10005;';
-    btn.setAttribute('aria-expanded', 'true');
-    btn.setAttribute('aria-label', 'Fechar menu');
-  }
-  function closeMenu(){
-    sidebar.classList.remove('open');
-    overlay.classList.remove('open');
-    btn.innerHTML='&#9776;';
-    btn.setAttribute('aria-expanded', 'false');
-    btn.setAttribute('aria-label', 'Abrir menu');
-  }
-  btn.addEventListener('click', function(){ sidebar.classList.contains('open') ? closeMenu() : openMenu(); });
-  overlay.addEventListener('click', closeMenu);
-  sidebar.querySelectorAll('a').forEach(function(a){ a.addEventListener('click', closeMenu); });
-  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeMenu(); });
-  window.addEventListener('resize', function(){ if(window.innerWidth > 900) closeMenu(); });
-})();
-
-/* ── nav ativo ── */
-(function(){
-  var path = window.location.pathname.split('/').pop().replace(/\.php$/,'').replace(/\.html$/,'');
-  if(path===''||path==='index') path='home';
-  document.querySelectorAll('.sidebar .nav-item[data-page]').forEach(function(a){
-    if(a.dataset.page===path) a.classList.add('active');
-  });
-})();
-
-
-</script>
-
-<script src="../static/js/acessibility.js" defer></script>
+<script src="../static/js/acessibility.js?v=67" defer></script>
 </body>
 </html>

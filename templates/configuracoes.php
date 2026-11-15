@@ -53,6 +53,35 @@ $ehAdmin =
 $erro = "";
 $sucesso = "";
 
+if (empty($_SESSION['account_csrf'])) {
+    $_SESSION['account_csrf'] = bin2hex(random_bytes(24));
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'excluir_conta') {
+    $csrfValido = hash_equals((string)$_SESSION['account_csrf'], (string)($_POST['csrf'] ?? ''));
+    $confirmacaoValida = trim((string)($_POST['confirmacao'] ?? '')) === 'EXCLUIR';
+    if (!$csrfValido || !$confirmacaoValida) {
+        $erro = 'Confirmação de exclusão inválida.';
+    } else {
+        try {
+            authRevokeRememberToken($pdo);
+            $stmt = $pdo->prepare('DELETE FROM usuario WHERE id_usuario=?');
+            $stmt->execute([$idUsuarioAtual]);
+            if (!$stmt->rowCount()) throw new RuntimeException('Conta não encontrada.');
+            $_SESSION = [];
+            if (ini_get('session.use_cookies')) {
+                $cookie = session_get_cookie_params();
+                setcookie(session_name(), '', ['expires'=>time()-42000,'path'=>$cookie['path'],'domain'=>$cookie['domain'],'secure'=>$cookie['secure'],'httponly'=>$cookie['httponly'],'samesite'=>$cookie['samesite'] ?? 'Lax']);
+            }
+            session_destroy();
+            header('Location: ../index.php', true, 303);
+            exit;
+        } catch (Throwable $e) {
+            $erro = 'Não foi possível excluir sua conta. Existem registros vinculados a ela.';
+        }
+    }
+}
+
 if (
     isset($_GET["acao"]) &&
     $_GET["acao"] === "exportar_dados"
@@ -64,6 +93,7 @@ if (
             g.nm_gesto,
             h.url_arquivo,
             h.texto_resultado,
+            h.salvo,
             h.criado_em
         FROM historico h
         LEFT JOIN gesto g
@@ -121,7 +151,7 @@ if (
     try {
         $stmt = $pdo->prepare("
             DELETE FROM historico
-            WHERE id_usuario = ?
+            WHERE id_usuario = ? AND salvo = 0
         ");
 
         $stmt->execute([
@@ -129,7 +159,7 @@ if (
         ]);
 
         $sucesso =
-            "Histórico removido com sucesso.";
+            "Histórico não salvo removido. As traduções salvas foram preservadas.";
 
     } catch (PDOException $e) {
         $erro =
@@ -164,6 +194,7 @@ if (
     rel="stylesheet"
     href="../static/css/style.css"
 >
+<link rel="stylesheet" href="../static/css/app-shell.css">
 
 <link
     rel="stylesheet"
@@ -174,104 +205,14 @@ if (
 >
 
 <script>
-
-(function(){
-
-    try {
-
-        const KEYS = {
-            theme: "libras_theme",
-            fontSize: "libras_fontsize",
-            contrast: "libras_contrast"
-        };
-
-        const FONT_SCALES = {
-            pequena: 0.9,
-            media: 1,
-            grande: 1.15
-        };
-
-        function safeGet(
-            chave,
-            padrao
-        ) {
-            try {
-                const valor =
-                    localStorage.getItem(
-                        chave
-                    );
-
-                return valor !== null
-                    ? valor
-                    : padrao;
-
-            } catch (erro) {
-                return padrao;
-            }
-        }
-
-        const tema =
-            safeGet(
-                KEYS.theme,
-                "claro"
-            );
-
-        let temaEfetivo =
-            tema;
-
-        if (
-            tema === "automatico"
-        ) {
-            temaEfetivo =
-                (
-                    window.matchMedia &&
-                    window.matchMedia(
-                        "(prefers-color-scheme: dark)"
-                    ).matches
-                )
-                    ? "escuro"
-                    : "claro";
-        }
-
-        if (
-            temaEfetivo === "escuro"
-        ) {
-            document.documentElement
-                .setAttribute(
-                    "data-theme",
-                    "dark"
-                );
-        }
-
-        document.documentElement
-            .style
-            .setProperty(
-                "--font-scale",
-                FONT_SCALES[
-                    safeGet(
-                        KEYS.fontSize,
-                        "media"
-                    )
-                ] || 1
-            );
-
-        if (
-            safeGet(
-                KEYS.contrast,
-                "off"
-            ) === "on"
-        ) {
-            document.documentElement
-                .classList
-                .add(
-                    "high-contrast"
-                );
-        }
-
-    } catch (erro) {}
-
-})();
-
+try {
+    const saved = JSON.parse(localStorage.getItem('librashub_accessibility_v2') || '{}');
+    const selected = saved.theme || 'auto';
+    const effective = selected === 'auto' ? (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light') : selected;
+    document.documentElement.dataset.theme = effective;
+    document.documentElement.style.setProperty('--font-scale', (Number(saved.font) || 100) / 100);
+    document.documentElement.classList.toggle('high-contrast', Boolean(saved.contrast));
+} catch (error) {}
 </script>
 
 <style>
@@ -282,7 +223,7 @@ if (
     left:0;
     width:260px;
     height:100vh;
-    overflow-y:auto;
+    overflow:hidden;
 }
 
 .content{
@@ -372,6 +313,9 @@ if (
     max-width:640px;
     margin-bottom:16px;
 }
+
+.settings-section{max-width:760px;margin-bottom:16px}.settings-section>.row-desc{margin:-4px 0 16px}.account-actions{display:grid;gap:8px}.account-action{width:100%;min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font:inherit;text-align:left;text-decoration:none;cursor:pointer}.account-action>span{display:grid;grid-template-columns:24px 1fr;align-items:center;column-gap:10px}.account-action>span>i{grid-row:1/3;color:var(--primary)}.account-action strong,.account-action small{display:block}.account-action small{color:var(--text-muted)}.account-action--danger{border-color:color-mix(in srgb,var(--danger) 55%,var(--border))}.account-action--danger>span>i,.account-action--danger>i{color:var(--danger)}
+.settings-dialog{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:1rem;background:rgba(3,9,20,.72);backdrop-filter:blur(5px)}.settings-dialog[hidden]{display:none}.settings-dialog__card{width:min(100%,34rem);max-height:90dvh;overflow-y:auto;margin:0;padding:clamp(1rem,3vw,1.5rem)}.settings-dialog__card header,.settings-dialog__card footer{display:flex;align-items:center;justify-content:space-between;gap:1rem}.settings-dialog__card header{padding-bottom:.8rem;border-bottom:1px solid var(--border)}.settings-dialog__card header h2{margin:0}.settings-dialog__card header button{width:40px;height:40px;border:1px solid var(--border);border-radius:50%;background:var(--surface);color:var(--text)}.settings-dialog__card footer{margin-top:1rem;justify-content:flex-end}.settings-dialog__card .btn-danger,.settings-dialog__card .btn-cancel{min-height:44px;padding:.65rem 1rem;border-radius:10px}
 
 @media(max-width:900px){
 
@@ -633,7 +577,7 @@ body{
 <link rel="stylesheet" href="../static/css/sidebar.css">
 </head>
 
-<body>
+<body class="app-shell app-dashboard settings-page">
 
 
 <?php $sidebarId = "sidebarMenu"; include __DIR__ . "/partials/sidebar.php"; ?>
@@ -688,811 +632,59 @@ body{
     <?php endif; ?>
 
 
-    <div
-        class="panel"
-        style="max-width:640px;"
-    >
+    <section class="panel settings-section">
+        <div class="section-title"><i class="fa-solid fa-universal-access" aria-hidden="true"></i> Acessibilidade</div>
+        <p class="row-desc">Todas as preferências visuais e de leitura são salvas em uma única configuração global.</p>
+        <div class="settings-a11y" data-a11y-settings></div>
+    </section>
 
-        <div class="section-title">
-            <i class="fa-solid fa-universal-access" aria-hidden="true"></i> Acessibilidade e Aparência
+    <section class="panel settings-section">
+        <div class="section-title"><i class="fa-solid fa-globe" aria-hidden="true"></i> Idioma</div>
+        <div class="field">
+            <label for="idiomaInterface">Idioma da Interface</label>
+            <select id="idiomaInterface" onchange="setInterfaceLanguage(this.value)">
+                <option value="pt-BR">Português (Brasil)</option>
+                <option value="en">English</option>
+                <option value="es">Español</option>
+                <option value="fr">Français</option>
+            </select>
         </div>
+    </section>
 
-        <p class="row-desc">As mesmas preferências da página inicial são aplicadas em todo o LibrasHub.</p>
-
-
-        <div
-            class="row-desc"
-            style="margin-bottom:6px;"
-        >
-            Tema
-        </div>
-
-
-        <div
-            class="seg-row"
-            id="segTheme"
-        >
-
-            <button
-                type="button"
-                class="seg-btn"
-                data-value="claro"
-                onclick="setTheme(this)"
-            >
-                Claro
-            </button>
-
-            <button
-                type="button"
-                class="seg-btn"
-                data-value="escuro"
-                onclick="setTheme(this)"
-            >
-                Escuro
-            </button>
-
-            <button
-                type="button"
-                class="seg-btn"
-                data-value="automatico"
-                onclick="setTheme(this)"
-            >
-                Automático
-            </button>
-
-        </div>
-
-
-        <div
-            class="row-desc"
-            style="margin-bottom:6px;"
-        >
-            Tamanho da Fonte
-        </div>
-
-
-        <div
-            class="seg-row"
-            id="segFont"
-        >
-
-            <button
-                type="button"
-                class="seg-btn"
-                data-value="pequena"
-                onclick="setFontSize(this)"
-            >
-                Pequena
-            </button>
-
-            <button
-                type="button"
-                class="seg-btn"
-                data-value="media"
-                onclick="setFontSize(this)"
-            >
-                Média
-            </button>
-
-            <button
-                type="button"
-                class="seg-btn"
-                data-value="grande"
-                onclick="setFontSize(this)"
-            >
-                Grande
-            </button>
-
-        </div>
-
-
-        <div class="row-between">
-
-            <div>
-
-                <div class="row-title">
-                    Alto Contraste
-                </div>
-
-                <div class="row-desc">
-                    Melhora a legibilidade
-                </div>
-
-            </div>
-
-            <button
-                type="button"
-                class="toggle"
-                id="toggleContrast"
-                onclick="setContrast(this)"
-                aria-label="Ativar ou desativar alto contraste"
-            ></button>
-
-        </div>
-
-        <div class="row-between">
-
-            <div>
-                <div class="row-title">Leitura em Voz Alta</div>
-                <div class="row-desc">Lê o conteúdo desta página em português</div>
-            </div>
-
-            <button
-                type="button"
-                class="btn btn-outline"
-                id="settingsTtsToggle"
-                onclick="alternarLeituraVoz()"
-                aria-pressed="false"
-            >
-                <i class="fa-solid fa-volume-high" aria-hidden="true"></i>
-                <span>Iniciar leitura</span>
-            </button>
-
-        </div>
-
-
-    </div>
+    <section class="panel settings-section account-actions" aria-labelledby="accountActionsTitle">
+        <div class="section-title" id="accountActionsTitle"><i class="fa-solid fa-user-gear" aria-hidden="true"></i> Conta</div>
+        <a class="account-action" href="logout.php"><span><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><strong>Sair da conta</strong><small>Encerrar a sessão neste dispositivo</small></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></a>
+        <button class="account-action account-action--danger" type="button" id="openDeleteAccount"><span><i class="fa-solid fa-trash" aria-hidden="true"></i><strong>Excluir conta</strong><small>Apagar permanentemente a conta e os dados associados</small></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+    </section>
 
 
     
 </main>
 
+<div class="settings-dialog" id="deleteAccountDialog" role="dialog" aria-modal="true" aria-labelledby="deleteAccountTitle" hidden>
+    <form class="settings-dialog__card panel" method="post" action="configuracoes.php">
+        <header><h2 id="deleteAccountTitle">Excluir conta</h2><button type="button" data-delete-close aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></header>
+        <p>Esta ação é permanente. Digite <strong>EXCLUIR</strong> para confirmar.</p>
+        <input type="hidden" name="acao" value="excluir_conta">
+        <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['account_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+        <div class="field"><label for="deleteConfirmation">Confirmação</label><input id="deleteConfirmation" name="confirmacao" autocomplete="off" required pattern="EXCLUIR" placeholder="EXCLUIR"></div>
+        <footer><button class="btn-cancel" type="button" data-delete-close>Cancelar</button><button class="btn-danger" type="submit">Excluir permanentemente</button></footer>
+    </form>
+</div>
 
-<script>
 
-const KEYS = {
-    theme: "libras_theme",
-    fontSize: "libras_fontsize",
-    contrast: "libras_contrast"
-};
-
-const FONT_SCALES = {
-    pequena: 0.9,
-    media: 1,
-    grande: 1.15
-};
-
-const memoryStore = {};
-
-
-function safeGet(
-    key,
-    fallback
-) {
-
-    try {
-
-        const valor =
-            localStorage.getItem(
-                key
-            );
-
-        return valor !== null
-            ? valor
-            : fallback;
-
-    } catch (erro) {
-
-        return key in memoryStore
-            ? memoryStore[key]
-            : fallback;
-    }
-}
-
-
-function safeSet(
-    key,
-    value
-) {
-
-    memoryStore[key] =
-        value;
-
-    try {
-
-        localStorage.setItem(
-            key,
-            value
-        );
-
-    } catch (erro) {}
-}
-
-
-function applyTheme(
-    theme
-) {
-
-    const html =
-        document.documentElement;
-
-    let efetivo =
-        theme;
-
-    if (
-        theme === "automatico"
-    ) {
-
-        efetivo =
-            (
-                window.matchMedia &&
-                window.matchMedia(
-                    "(prefers-color-scheme: dark)"
-                ).matches
-            )
-                ? "escuro"
-                : "claro";
-    }
-
-    if (
-        efetivo === "escuro"
-    ) {
-
-        html.setAttribute(
-            "data-theme",
-            "dark"
-        );
-
-    } else {
-
-        html.removeAttribute(
-            "data-theme"
-        );
-    }
-}
-
-
-function applyFontSize(
-    size
-) {
-
-    document.documentElement
-        .style
-        .setProperty(
-            "--font-scale",
-            FONT_SCALES[size]
-            || 1
-        );
-}
-
-
-function applyContrast(
-    state
-) {
-
-    document.documentElement
-        .classList
-        .toggle(
-            "high-contrast",
-            state === "on"
-        );
-}
-
-
-function setTheme(
-    elemento
-) {
-
-    document
-        .querySelectorAll(
-            "#segTheme .seg-btn"
-        )
-        .forEach(
-            botao =>
-                botao.classList.remove(
-                    "active"
-                )
-        );
-
-    elemento.classList.add(
-        "active"
-    );
-
-    safeSet(
-        KEYS.theme,
-        elemento.dataset.value
-    );
-
-    applyTheme(
-        elemento.dataset.value
-    );
-}
-
-
-function setFontSize(
-    elemento
-) {
-
-    document
-        .querySelectorAll(
-            "#segFont .seg-btn"
-        )
-        .forEach(
-            botao =>
-                botao.classList.remove(
-                    "active"
-                )
-        );
-
-    elemento.classList.add(
-        "active"
-    );
-
-    safeSet(
-        KEYS.fontSize,
-        elemento.dataset.value
-    );
-
-    applyFontSize(
-        elemento.dataset.value
-    );
-}
-
-
-function setContrast(
-    elemento
-) {
-
-    const ligado =
-        !elemento.classList.contains(
-            "on"
-        );
-
-    elemento.classList.toggle(
-        "on",
-        ligado
-    );
-
-    const estado =
-        ligado
-            ? "on"
-            : "off";
-
-    safeSet(
-        KEYS.contrast,
-        estado
-    );
-
-    applyContrast(
-        estado
-    );
-}
-
-
-let leituraAtiva = false;
-
-function pararLeituraVoz() {
-    if ("speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-    }
-
-    leituraAtiva = false;
-
-    const botao = document.getElementById("settingsTtsToggle");
-    if (botao) {
-        botao.setAttribute("aria-pressed", "false");
-        botao.querySelector("span").textContent = "Iniciar leitura";
-        botao.querySelector("i").className = "fa-solid fa-volume-high";
-    }
-}
-
-
-function alternarLeituraVoz() {
-    if (!("speechSynthesis" in window)) {
-        alert("Seu navegador não oferece suporte à leitura em voz alta.");
-        return;
-    }
-
-    if (leituraAtiva) {
-        pararLeituraVoz();
-        return;
-    }
-
-    const conteudo = document.querySelector("main.content");
-    const texto = conteudo ? conteudo.innerText.replace(/\s+/g, " ").trim() : "";
-    if (texto === "") {
-        return;
-    }
-
-    const fala = new SpeechSynthesisUtterance(texto);
-    fala.lang = "pt-BR";
-    fala.rate = 0.94;
-    fala.onend = pararLeituraVoz;
-    fala.onerror = pararLeituraVoz;
-
-    leituraAtiva = true;
-
-    const botao = document.getElementById("settingsTtsToggle");
-    botao?.setAttribute("aria-pressed", "true");
-    if (botao) {
-        botao.querySelector("span").textContent = "Parar leitura";
-        botao.querySelector("i").className = "fa-solid fa-stop";
-    }
-
-    window.speechSynthesis.speak(fala);
-}
-
-
-window.addEventListener("beforeunload", pararLeituraVoz);
-
-
-function salvarPreferencia(
-    chave,
-    valor
-) {
-
-    safeSet(
-        chave,
-        valor
-    );
-}
-
-
-function alternarPreferencia(
-    elemento,
-    chave
-) {
-
-    const ligado =
-        !elemento.classList.contains(
-            "on"
-        );
-
-    elemento.classList.toggle(
-        "on",
-        ligado
-    );
-
-    safeSet(
-        chave,
-        ligado
-            ? "on"
-            : "off"
-    );
-}
-
-
-function carregarToggle(
-    id,
-    chave,
-    padrao
-) {
-
-    const elemento =
-        document.getElementById(
-            id
-        );
-
-    if (!elemento) {
-        return;
-    }
-
-    elemento.classList.toggle(
-        "on",
-        safeGet(
-            chave,
-            padrao
-        ) === "on"
-    );
-}
-
-
-function limparCacheLocal() {
-
-    const confirmar =
-        confirm(
-            "Deseja limpar as preferências locais deste navegador?"
-        );
-
-    if (!confirmar) {
-        return;
-    }
-
-    const chaves = [
-        "libras_theme",
-        "libras_fontsize",
-        "libras_contrast",
-        "libras_notificacoes_email",
-        "libras_sons",
-        "libras_armazenar_videos",
-        "libras_perfil_publico"
-    ];
-
-    chaves.forEach(
-        chave => {
-
-            try {
-                localStorage.removeItem(
-                    chave
-                );
-            } catch (erro) {}
-        }
-    );
-
-    window.location.reload();
-}
-
-
-(function iniciar(){
-
-    const tema =
-        safeGet(
-            KEYS.theme,
-            "claro"
-        );
-
-    applyTheme(
-        tema
-    );
-
-    document.querySelector(
-        `#segTheme .seg-btn[data-value="${tema}"]`
-    )?.classList.add(
-        "active"
-    );
-
-
-    const fonte =
-        safeGet(
-            KEYS.fontSize,
-            "media"
-        );
-
-    applyFontSize(
-        fonte
-    );
-
-    document.querySelector(
-        `#segFont .seg-btn[data-value="${fonte}"]`
-    )?.classList.add(
-        "active"
-    );
-
-
-    const contraste =
-        safeGet(
-            KEYS.contrast,
-            "off"
-        );
-
-    applyContrast(
-        contraste
-    );
-
-    document
-        .getElementById(
-            "toggleContrast"
-        )
-        ?.classList
-        .toggle(
-            "on",
-            contraste === "on"
-        );
-
-
-    carregarToggle(
-        "toggleEmail",
-        "libras_notificacoes_email",
-        "on"
-    );
-
-    carregarToggle(
-        "toggleSons",
-        "libras_sons",
-        "off"
-    );
-
-    carregarToggle(
-        "toggleVideos",
-        "libras_armazenar_videos",
-        "off"
-    );
-
-    carregarToggle(
-        "togglePerfil",
-        "libras_perfil_publico",
-        "on"
-    );
-
-})();
-
-</script>
-
-
-<button
-    class="menu-toggle"
-    id="menuToggle"
-    type="button"
-    aria-label="Abrir menu"
-    aria-expanded="false"
-    aria-controls="sidebarMenu"
->
-    &#9776;
-</button>
-
-
-<div
-    class="sidebar-overlay"
-    id="sidebarOverlay"
-></div>
 
 
 <script>
-(function(){
-
-    var btn =
-        document.getElementById(
-            "menuToggle"
-        );
-
-    var sidebar =
-        document.querySelector(
-            ".sidebar"
-        );
-
-    var overlay =
-        document.getElementById(
-            "sidebarOverlay"
-        );
-
-    if (
-        !btn ||
-        !sidebar ||
-        !overlay
-    ) {
-        return;
-    }
-
-    function openMenu(){
-
-        sidebar.classList.add(
-            "open"
-        );
-
-        overlay.classList.add(
-            "open"
-        );
-
-        btn.innerHTML =
-            "&#10005;";
-
-        btn.setAttribute(
-            "aria-label",
-            "Fechar menu"
-        );
-
-        btn.setAttribute(
-            "aria-expanded",
-            "true"
-        );
-
-        document.body.style.overflow =
-            "hidden";
-    }
-
-    function closeMenu(){
-
-        sidebar.classList.remove(
-            "open"
-        );
-
-        overlay.classList.remove(
-            "open"
-        );
-
-        btn.innerHTML =
-            "&#9776;";
-
-        btn.setAttribute(
-            "aria-label",
-            "Abrir menu"
-        );
-
-        btn.setAttribute(
-            "aria-expanded",
-            "false"
-        );
-
-        document.body.style.overflow =
-            "";
-    }
-
-    btn.addEventListener(
-        "click",
-        function(){
-
-            sidebar.classList.contains(
-                "open"
-            )
-                ? closeMenu()
-                : openMenu();
-        }
-    );
-
-    overlay.addEventListener(
-        "click",
-        closeMenu
-    );
-
-    sidebar
-        .querySelectorAll("a")
-        .forEach(
-            function(link){
-
-                link.addEventListener(
-                    "click",
-                    closeMenu
-                );
-            }
-        );
-
-    document.addEventListener(
-        "keydown",
-        function(event){
-
-            if(
-                event.key === "Escape" &&
-                sidebar.classList.contains("open")
-            ){
-                closeMenu();
-            }
-        }
-    );
-
-    window.addEventListener(
-        "resize",
-        function(){
-
-            if(
-                window.innerWidth > 900 &&
-                sidebar.classList.contains("open")
-            ){
-                closeMenu();
-            }
-        }
-    );
-
-})();
+const deleteAccountDialog=document.getElementById('deleteAccountDialog');
+const closeDeleteAccount=()=>{deleteAccountDialog.hidden=true;document.body.style.overflow=''};
+document.getElementById('openDeleteAccount')?.addEventListener('click',()=>{deleteAccountDialog.hidden=false;document.body.style.overflow='hidden';setTimeout(()=>document.getElementById('deleteConfirmation')?.focus(),0)});
+deleteAccountDialog?.addEventListener('click',event=>{if(event.target===deleteAccountDialog||event.target.closest('[data-delete-close]'))closeDeleteAccount()});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!deleteAccountDialog.hidden)closeDeleteAccount()});
+const languageSelect=document.getElementById('idiomaInterface');
+if(languageSelect)languageSelect.value=localStorage.getItem('libras_idioma')||'pt-BR';
 </script>
-
-
-<script>
-
-(function(){
-
-    var path =
-        window.location.pathname
-            .split("/")
-            .pop()
-            .replace(
-                /\.php$/,
-                ""
-            );
-
-    document
-        .querySelectorAll(
-            ".sidebar .nav-item[data-page]"
-        )
-        .forEach(
-            function(link){
-
-                if (
-                    link.dataset.page ===
-                    path
-                ) {
-                    link.classList.add(
-                        "active"
-                    );
-                }
-            }
-        );
-
-})();
-
-</script>
-
-
-<script src="../static/js/acessibility.js" defer></script>
+<script src="../static/js/acessibility.js?v=67" defer></script>
 </body>
 
 </html>

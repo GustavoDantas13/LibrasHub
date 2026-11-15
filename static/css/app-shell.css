@@ -1,6 +1,6 @@
 /* LibrasHub UI System — compartilhado pela prévia, dashboard, ajuda e locais. */
 :root{
-  --ui-bg:#f5f7fb;--ui-surface:#fff;--ui-surface-soft:#eef3f8;--ui-text:#172033;
+  --ui-bg:#ffea76;--ui-surface:#fff;--ui-surface-soft:#f7f9fc;--ui-text:#172033;
   --ui-muted:#526176;--ui-border:#d7e0ea;--ui-brand:#1747e8;--ui-brand-hover:#1038bd;
   --ui-accent:#087f78;--ui-warning:#a35a00;--ui-danger:#b42318;--ui-field-bg:#fff;--ui-radius:16px;
   --ui-shadow:0 12px 35px rgba(28,39,60,.09);--ui-font:'IBM Plex Sans','Segoe UI',Arial,sans-serif;
@@ -30,7 +30,7 @@ html.high-contrast{--ui-bg:#000;--ui-surface:#000;--ui-surface-soft:#000;--ui-te
 .places-empty{grid-column:1/-1;padding:clamp(2rem,6vw,4rem);text-align:center}.places-empty>i{font-size:2.5rem;color:var(--ui-brand)}.places-empty h2{margin:.8rem 0 .4rem}.places-empty .ui-button{margin-top:1rem}
 
 /* Aba Locais — grade editorial inspirada na referência enviada. */
-html:not([data-theme="dark"]):not(.high-contrast) body.places-page{--ui-bg:#ffe879;--ui-surface:#ffe879;--ui-surface-soft:#ffefaa;--ui-border:#182033;--ui-warning:#edaa00}
+html:not([data-theme="dark"]):not(.high-contrast) body.places-page{--ui-bg:#ffe879;--ui-surface:#fff;--ui-surface-soft:#f7f9fc;--ui-border:#182033;--ui-warning:#edaa00}
 .places-page .content{min-height:100dvh;padding:clamp(28px,4vw,52px)}
 .places-page .ui-container{width:min(1460px,100%)}
 .places-page .places-header{align-items:flex-start;margin-bottom:2rem}
@@ -97,3 +97,8 @@ html[data-theme="dark"] body.places-page .place-form .ui-field input,html[data-t
 .place-lightbox{position:fixed;inset:0;z-index:12000;display:grid;place-items:center;padding:clamp(1rem,4vw,3rem);background:rgba(2,6,14,.92);backdrop-filter:blur(6px)}.place-lightbox[hidden]{display:none}.place-lightbox img{display:block;max-width:100%;max-height:calc(100dvh - 2rem);object-fit:contain;border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.55)}.place-lightbox__close{position:fixed;top:max(1rem,env(safe-area-inset-top));right:max(1rem,env(safe-area-inset-right));z-index:1;width:46px;height:46px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.6);border-radius:50%;background:#fff;color:#08111f;font-size:1.2rem;cursor:pointer}
 @media(max-width:680px){.places-page .place-gallery__button img{height:120px}.place-lightbox{padding:4rem .75rem 1rem}}
 .place-notice{position:fixed;inset:0;z-index:12500;display:grid;place-items:center;padding:1rem;background:rgba(3,9,20,.72);backdrop-filter:blur(5px)}.place-notice[hidden]{display:none}.place-notice__card{width:min(440px,100%);display:grid;gap:1rem;padding:1.25rem}.place-notice__card header{display:flex;align-items:center;justify-content:space-between;gap:1rem}.place-notice__card h2,.place-notice__card p{margin:0}.place-notice__card header button{width:40px;height:40px;border:1px solid var(--ui-border);border-radius:50%;background:var(--ui-surface);color:var(--ui-text)}
+
+/* Formulários longos permanecem utilizáveis em telas baixas e com fonte ampliada. */
+.modal-content,.social-dialog__card,.place-modal__card,.place-notice__card{max-height:min(90dvh,900px);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-gutter:stable;scroll-padding-block:1rem}
+.places-view-tabs{display:inline-flex;align-items:center;gap:.25rem;padding:.25rem;border:1px solid var(--ui-border);border-radius:999px;background:var(--ui-surface)}.places-view-tab{min-height:38px;padding:.45rem .85rem;border:0;border-radius:999px;background:transparent;color:var(--ui-muted);font:inherit;font-size:.82rem;font-weight:750;cursor:pointer}.places-view-tab.is-active{background:var(--ui-brand);color:#fff}.high-contrast .places-view-tab.is-active{color:#000}
+@media(max-width:680px){.modal-content,.social-dialog__card,.place-modal__card,.place-notice__card{max-height:calc(100dvh - .7rem)}.places-results .places-section-heading{align-items:stretch;flex-direction:column}.places-view-tabs{width:100%}.places-view-tab{flex:1}}

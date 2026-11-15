@@ -739,6 +739,8 @@ $estaOnline =
         opacity .2s,
         visibility .2s;
     padding:20px;
+    overflow-y:auto;
+    overscroll-behavior:contain;
 }
 
 .modal-backdrop.open{
@@ -763,6 +765,9 @@ $estaOnline =
             .64,
             1
         );
+    max-height:calc(100dvh - 40px);
+    display:flex;
+    flex-direction:column;
     overflow:hidden;
     box-shadow:
         0 20px 60px
@@ -781,6 +786,7 @@ $estaOnline =
     justify-content:space-between;
     padding:20px 24px 16px;
     border-bottom:1px solid var(--border);
+    flex:0 0 auto;
 }
 
 .modal-title{
@@ -809,6 +815,10 @@ $estaOnline =
 
 .modal-body{
     padding:22px 24px;
+    min-height:0;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    scrollbar-gutter:stable;
 }
 
 .modal-footer{
@@ -817,6 +827,7 @@ $estaOnline =
     gap:10px;
     justify-content:flex-end;
     border-top:1px solid var(--border);
+    flex:0 0 auto;
 }
 
 .danger-modal-icon{
@@ -2474,7 +2485,7 @@ function verificarConfirmacao(){
 </script>
 
 
-<script src="../static/js/acessibility.js" defer></script>
+<script src="../static/js/acessibility.js?v=67" defer></script>
 </body>
 
 </html>

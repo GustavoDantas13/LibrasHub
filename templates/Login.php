@@ -1,5 +1,7 @@
 <?php
 
+session_start();
+
 require_once "configs/config.php";
 
 
@@ -65,10 +67,10 @@ if (
     $_SERVER["REQUEST_METHOD"] === "POST"
 ) {
 
-    $email = trim(
+    $email = authNormalizeEmail((string) (
         $_POST["email"]
         ?? ""
-    );
+    ));
 
     $senha =
         $_POST["senha"]
@@ -106,7 +108,7 @@ if (
 
             FROM usuario
 
-            WHERE email_usuario = ?
+            WHERE LOWER(TRIM(email_usuario)) = ?
 
             LIMIT 1
         ");
@@ -124,9 +126,10 @@ if (
 
         if (
             !$usuario ||
-            !password_verify(
-                $senha,
-                $usuario["senha_usuario"]
+            !authVerifyUserPassword(
+                $pdo,
+                $usuario,
+                $senha
             )
         ) {
 
@@ -155,10 +158,15 @@ if (
             $_SESSION["usuario_tipo"] =
                 $usuario["tp_usuario"];
 
-            // Todo login cria automaticamente um token persistente para este
-            // navegador. Um token anterior deste dispositivo é substituído.
-            authRevokeRememberToken($pdo);
-            authCreateRememberToken($pdo, (int) $usuario["id_usuario"]);
+            try {
+                authRevokeRememberToken($pdo);
+                authCreateRememberToken($pdo, (int) $usuario["id_usuario"]);
+            } catch (Throwable $rememberError) {
+                // O login por sessão continua funcionando mesmo se a tabela de
+                // "lembrar-me" ainda não tiver sido migrada no ambiente.
+                error_log("Falha ao criar token persistente: " . $rememberError->getMessage());
+                authForgetCookie();
+            }
 
 
             header(
@@ -194,18 +202,22 @@ if (
         rel="stylesheet"
         href="../static/css/style.css"
     >
+    <link rel="stylesheet" href="../static/css/app-shell.css">
+    <link rel="stylesheet" href="../static/css/auth.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 
 </head>
 
 
-<body>
+<body class="app-shell auth-page">
 
 
 <div class="auth-wrap">
 
 
     <div class="auth-box">
+
+        <a class="auth-brand" href="../index.php"><img src="../static/images/librashub-logo.png" alt=""><span>LibrasHub</span></a>
 
 
         <div class="auth-icon">
@@ -271,7 +283,7 @@ if (
 
         <form
             method="POST"
-            action="login.php"
+            action="Login.php"
         >
 
 
@@ -337,6 +349,7 @@ if (
 
             </div>
 
+
             <button
                 type="submit"
                 class="btn btn-block"
@@ -362,6 +375,8 @@ if (
 
         </div>
 
+        <a class="auth-back" href="../index.php"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i>Voltar para a página inicial</a>
+
 
     </div>
 
@@ -369,7 +384,9 @@ if (
 </div>
 
 
-<script src="../static/js/acessibility.js" defer></script>
+<script src="../static/js/password-toggle.js?v=1" defer></script>
+<script src="../static/js/acessibility.js?v=67" defer></script>
+<script src="../static/js/i18n.js" defer></script>
 </body>
 
 </html>

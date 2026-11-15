@@ -11,6 +11,7 @@ import numpy as np
 import uuid
 import time
 import threading
+import hashlib
 
 from werkzeug.utils import secure_filename
 
@@ -51,6 +52,7 @@ from src.traducao.treinamento_cnn import (
 # Flask
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024
 
 
 # Caminhos
@@ -114,6 +116,27 @@ def obter_id_sessao_traducao():
         "sessao_traducao",
         ""
     ).strip()
+
+    if not sessao_id:
+        sessao_id = request.headers.get(
+            "X-Translation-Session",
+            ""
+        ).strip()
+
+    # Compatibilidade com integrações antigas que enviavam somente o frame.
+    # O identificador derivado do cliente mantém buffers separados sem alterar
+    # o contrato multipart usado pela web e pelo aplicativo mobile.
+    if not sessao_id:
+        origem = (
+            request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+            or request.remote_addr
+            or "cliente-legado"
+        )
+        agente = request.headers.get("User-Agent", "cliente")
+        resumo = hashlib.sha256(
+            f"{origem}|{agente}".encode("utf-8")
+        ).hexdigest()[:32]
+        sessao_id = f"legacy-{resumo}"
 
     if not sessao_id or len(sessao_id) > 128:
         return None
@@ -1110,6 +1133,18 @@ def analisar():
     }), 200
 
 
+# Diagnóstico de disponibilidade usado pela web, pelo aplicativo e pelos testes.
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({
+        "ok": True,
+        "servico": "librashub-tradutor",
+        "modelo_disponivel": modelo_disponivel(),
+        "scaler_disponivel": scaler_disponivel(),
+        "traducao_disponivel": recursos_traducao_disponiveis()
+    }), 200
+
+
 # Tradução em tempo real
 
 @app.route(
@@ -1193,7 +1228,13 @@ def traducao_tempo_real():
                 )
             )
 
-            if landmarks is None:
+            if landmarks is None or np.allclose(landmarks, 0):
+
+                # Não misture frames antigos com ausência de mãos; isso evita
+                # previsões falsas quando a pessoa sai da câmera.
+                estado["buffer"].clear()
+                estado["gesto_confirmado"] = None
+                estado["contador_confirmacao"] = 0
 
                 return jsonify({
                     "status": "aguardando",
@@ -1382,7 +1423,9 @@ def limpar_traducao():
 if __name__ == "__main__":
 
     app.run(
-        debug=True,
+        host=os.getenv("LIBRASHUB_PYTHON_HOST", "127.0.0.1"),
+        port=int(os.getenv("LIBRASHUB_PYTHON_PORT", "5000")),
+        debug=os.getenv("LIBRASHUB_PYTHON_DEBUG", "0") == "1",
         use_reloader=False,
         threaded=True
     )

@@ -32,7 +32,9 @@ $emailSupportReady = class_exists(PHPMailer::class)
     && defined("SMTP_REMETENTE")
     && defined("SMTP_NOME")
     && defined("SMTP_PORT")
-    && defined("EMAIL_SUPORTE");
+    && defined("EMAIL_SUPORTE")
+    && function_exists("emailConfigurationReady")
+    && emailConfigurationReady();
 
 if (empty($_SESSION["usuario_id"])) {
     header("Location: ../index.php");
@@ -199,7 +201,9 @@ if (
                 SMTP_SENHA;
 
             $mail->SMTPSecure =
-                PHPMailer::ENCRYPTION_STARTTLS;
+                ((defined("SMTP_CRIPTO") && SMTP_CRIPTO === "ssl") || (int) SMTP_PORT === 465)
+                    ? PHPMailer::ENCRYPTION_SMTPS
+                    : PHPMailer::ENCRYPTION_STARTTLS;
 
             $mail->Port =
                 SMTP_PORT;
@@ -272,10 +276,8 @@ if (
             Exception $e
         ) {
 
-            $erro =
-                "Não foi possível enviar a mensagem. "
-                .
-                $mail->ErrorInfo;
+            error_log("Falha ao enviar email de suporte do LibrasHub: " . $mail->ErrorInfo);
+            $erro = "Não foi possível autenticar ou conectar ao servidor de email. Confira a conta, a senha de aplicativo e o tipo de criptografia configurado.";
         }
     }
 }
@@ -462,7 +464,7 @@ if (
     font-weight:600;
 }
 
-.faq-q span{
+.faq-q .faq-chevron{
     transition:transform 0.2s;
 }
 
@@ -478,7 +480,7 @@ if (
     display:block;
 }
 
-.faq-item.open .faq-q span{
+.faq-item.open .faq-q .faq-chevron{
     transform:rotate(180deg);
 }
 
@@ -681,7 +683,7 @@ body{
         line-height:1.45;
     }
 
-    .faq-q span{
+    .faq-q .faq-chevron{
         flex:0 0 auto;
         margin-top:1px;
     }
@@ -821,7 +823,7 @@ body{
                         onclick="toggleFaq(this)"
                     >
                         Como usar a câmera?
-                        <span>⌄</span>
+                        <i class="fa-solid fa-chevron-down faq-chevron" aria-hidden="true"></i>
                     </div>
 
                     <div class="faq-a">
@@ -839,7 +841,7 @@ body{
                         onclick="toggleFaq(this)"
                     >
                         Como enviar vídeos?
-                        <span>⌄</span>
+                        <i class="fa-solid fa-chevron-down faq-chevron" aria-hidden="true"></i>
                     </div>
 
                     <div class="faq-a">
@@ -857,7 +859,7 @@ body{
                         onclick="toggleFaq(this)"
                     >
                         Problemas com a câmera?
-                        <span>⌄</span>
+                        <i class="fa-solid fa-chevron-down faq-chevron" aria-hidden="true"></i>
                     </div>
 
                     <div class="faq-a">
@@ -875,7 +877,7 @@ body{
                         onclick="toggleFaq(this)"
                     >
                         Quais formatos são suportados?
-                        <span>⌄</span>
+                        <i class="fa-solid fa-chevron-down faq-chevron" aria-hidden="true"></i>
                     </div>
 
                     <div class="faq-a">
@@ -1269,7 +1271,7 @@ function toggleFaq(
 </script>
 
 
-<script src="../static/js/acessibility.js" defer></script>
+<script src="../static/js/acessibility.js?v=67" defer></script>
 </body>
 
 </html>

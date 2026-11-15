@@ -1,41 +1,36 @@
 <?php
 session_start();
-require_once __DIR__ . '/configs/config.php';
-require_once __DIR__ . '/configs/social_schema.php';
 if (empty($_SESSION['usuario_id'])) {
     header('Location: Login.php?redirect=locais.php');
     exit;
 }
+require_once __DIR__ . '/configs/config.php';
+require_once __DIR__ . '/configs/social_schema.php';
 ensureSocialSchema($pdo);
 
 $uid = (int) $_SESSION['usuario_id'];
 $ehAdmin = strcasecmp(trim((string) ($_SESSION['usuario_tipo'] ?? '')), 'Administrador') === 0;
-$statement = $pdo->prepare('SELECT is_community_user FROM usuario WHERE id_usuario=?');
+$statement = $pdo->prepare("SELECT is_community_user AND NOT EXISTS(SELECT 1 FROM usuario_punicoes p WHERE p.id_usuario=usuario.id_usuario AND p.tipo='cadastrar_locais' AND p.revogada_em IS NULL AND p.expira_em>NOW()) FROM usuario WHERE id_usuario=?");
 $statement->execute([$uid]);
 $canPublish = $ehAdmin || (bool) $statement->fetchColumn();
+$punishmentCheck = $pdo->prepare("SELECT 1 FROM usuario_punicoes WHERE id_usuario=? AND tipo='cadastrar_locais' AND revogada_em IS NULL AND expira_em>NOW() LIMIT 1");
+$punishmentCheck->execute([$uid]);
+if ($punishmentCheck->fetchColumn()) $canPublish = false;
 if (empty($_SESSION['locais_csrf'])) {
     $_SESSION['locais_csrf'] = bin2hex(random_bytes(24));
 }
+if (empty($_SESSION['social_csrf'])) $_SESSION['social_csrf'] = bin2hex(random_bytes(24));
 ?>
 <!doctype html>
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-    <script>
-        (function () {
-            try {
-                var theme = localStorage.getItem('libras_theme') || 'claro';
-                var dark = theme === 'escuro' || (theme === 'automatico' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-                if (dark) document.documentElement.setAttribute('data-theme', 'dark');
-                if (localStorage.getItem('libras_contrast') === 'on') document.documentElement.classList.add('high-contrast');
-            } catch (error) {}
-        })();
-    </script>
     <title>Locais acessíveis | LibrasHub</title>
     <link rel="icon" href="../static/images/librashub-logo.png">
     <link rel="stylesheet" href="../static/css/style.css">
     <link rel="stylesheet" href="../static/css/app-shell.css">
+    <link rel="stylesheet" href="../static/css/report-modal.css?v=70">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <link rel="stylesheet" href="../static/css/sidebar.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
@@ -83,7 +78,13 @@ if (empty($_SESSION['locais_csrf'])) {
         </section>
 
         <section class="places-results" aria-labelledby="resultsTitle">
-            <div class="places-section-heading"><div><h2 id="resultsTitle">Resultados da pesquisa</h2><p>Use os filtros para encontrar o local ideal.</p></div></div>
+            <div class="places-section-heading">
+                <div><h2 id="resultsTitle">Locais cadastrados</h2><p id="resultsDescription">Use os filtros para encontrar o local ideal.</p></div>
+                <div class="places-view-tabs" role="tablist" aria-label="Visualização dos locais">
+                    <button class="places-view-tab is-active" type="button" role="tab" aria-selected="true" data-place-scope="all">Todos</button>
+                    <button class="places-view-tab" type="button" role="tab" aria-selected="false" data-place-scope="mine">Meus locais</button>
+                </div>
+            </div>
             <div class="places-grid" id="placesGrid" aria-live="polite"><p>Carregando locais...</p></div>
         </section>
     </div>
@@ -163,6 +164,7 @@ if (empty($_SESSION['locais_csrf'])) {
 <script>
 const API = 'ajax/locais_api.php';
 const CSRF = <?= json_encode($_SESSION['locais_csrf']) ?>;
+const REPORT_CSRF = <?= json_encode($_SESSION['social_csrf']) ?>;
 const CURRENT_USER_ID = <?= $uid ?>;
 const IS_ADMIN = <?= $ehAdmin ? 'true' : 'false' ?>;
 const CAN_PUBLISH = <?= $canPublish ? 'true' : 'false' ?>;
@@ -173,6 +175,7 @@ const typeFilter = document.getElementById('typeFilter');
 const accessibilityFilter = document.getElementById('accessibilityFilter');
 const placesFilters = document.getElementById('placesFilters');
 const mapStatus = document.getElementById('mapStatus');
+const resultsDescription = document.getElementById('resultsDescription');
 const detailModal = document.getElementById('detailModal');
 const detailContent = document.getElementById('detailContent');
 const placeLightbox = document.getElementById('placeLightbox');
@@ -212,6 +215,7 @@ let pickerMap = null;
 let pickerMarker = null;
 let pendingCoordinateCount = 0;
 const placeMarkers = new Map();
+const placesState = {all: [], scope: 'all'};
 
 function showPlaceNotice(message, title = 'LibrasHub') {
     placeNoticeTitle.textContent = title;
@@ -252,30 +256,90 @@ function managementActions(local, compact = false) {
     return compact ? buttons : `<div class="place-card__actions">${buttons}</div>`;
 }
 
+function reportPlaceAction(local) {
+    if (Number(local.id_usuario_criador) === CURRENT_USER_ID) return '';
+    return `<button class="ui-button ui-button--secondary report-action" type="button" data-report-type="local" data-report-id="${Number(local.id_local)}" data-report-label="Local ${esc(local.nome)}" data-report-source="${esc(location.pathname+location.search)}#local-${Number(local.id_local)}"><i class="fa-regular fa-flag"></i>Denunciar</button>`;
+}
+
 function placeCard(local) {
     const reviews = Number(local.total_avaliacoes);
     const reviewText = reviews ? `${Number(local.nota_media).toFixed(1)} · ${reviews} avaliação${reviews === 1 ? '' : 'ões'}` : 'Ainda sem avaliações';
-    return `<article class="place-card ui-card">
+    return `<article class="place-card ui-card" data-place-id="${Number(local.id_local)}">
         <img class="place-card__image" src="${esc(local.imagem_principal)}" alt="Imagem de ${esc(local.nome)}" loading="lazy">
         <div class="place-card__body">
             <div class="place-card__top"><div><span class="place-type">${esc(local.tipo)}</span><h2>${esc(local.nome)}</h2></div>${badge(local.is_community_user)}</div>
             <div class="place-rating">${stars(local.nota_media)} <span>${reviewText}</span></div>
             <p class="place-address"><i class="fa-solid fa-location-dot"></i>${esc(local.logradouro)}, ${esc(local.numero)}, ${esc(local.bairro)}, ${esc(local.cidade)} - ${esc(local.uf)}, CEP ${esc(String(local.cep).replace(/(\d{5})(\d{3})/, '$1-$2'))}</p>
             <p class="place-author">Publicado por <a class="place-author-link" href="perfil.php?id=${Number(local.id_usuario_criador)}"><strong>${esc(local.autor)}</strong></a> ${badge(local.is_community_user)}</p>
-            <div class="place-card__actions"><button class="ui-button ui-button--secondary" type="button" data-detail="${Number(local.id_local)}">Ver detalhes</button>${canManage(local) ? managementActions(local, true) : ''}</div>
+            <div class="place-card__actions"><button class="ui-button ui-button--secondary" type="button" data-detail="${Number(local.id_local)}">Ver detalhes</button>${canManage(local) ? managementActions(local, true) : reportPlaceAction(local)}</div>
         </div>
     </article>`;
 }
 
-async function load() {
+function parseAccessibility(local) {
+    try { return JSON.parse(local.acessibilidades || '[]'); }
+    catch (error) { return []; }
+}
+
+function visiblePlaces() {
+    const query = placeSearch.value.trim().toLocaleLowerCase('pt-BR');
+    return placesState.all.filter(local => {
+        if (placesState.scope === 'mine' && Number(local.id_usuario_criador) !== CURRENT_USER_ID) return false;
+        if (typeFilter.value && local.tipo !== typeFilter.value) return false;
+        if (accessibilityFilter.value && !parseAccessibility(local).includes(accessibilityFilter.value)) return false;
+        if (!query) return true;
+        return [local.nome, local.tipo, local.bairro, local.cidade, local.uf, local.logradouro]
+            .some(value => String(value || '').toLocaleLowerCase('pt-BR').includes(query));
+    });
+}
+
+function popularPlaces() {
+    return [...placesState.all].sort((a, b) =>
+        Number(b.nota_media) - Number(a.nota_media)
+        || Number(b.total_avaliacoes) - Number(a.total_avaliacoes)
+        || Number(b.visualizacoes) - Number(a.visualizacoes)
+        || Number(b.id_local) - Number(a.id_local)
+    ).slice(0, 4);
+}
+
+function renderPlacesState() {
+    const places = visiblePlaces();
+    resultsDescription.textContent = placesState.scope === 'mine'
+        ? 'Locais cadastrados por você. Edições e exclusões aparecem imediatamente.'
+        : 'Use os filtros para encontrar o local ideal.';
+    placesGrid.innerHTML = places.length ? places.map(placeCard).join('') : '<div class="places-empty ui-card"><i class="fa-solid fa-map-location-dot"></i><h2>Nenhum local encontrado</h2><p>Altere os filtros ou cadastre um novo espaço acessível.</p></div>';
+    const popular = popularPlaces();
+    popularGrid.innerHTML = popular.length ? popular.map(compactCard).join('') : '<p>Ainda não há locais avaliados.</p>';
+}
+
+async function refreshPlacesState() {
     placesGrid.innerHTML = '<p>Carregando locais...</p>';
+    popularGrid.innerHTML = '<p>Carregando destaques...</p>';
     try {
-        const query = new URLSearchParams({action:'list', q:placeSearch.value, type:typeFilter.value, accessibility:accessibilityFilter.value});
-        const data = await api(API + '?' + query);
-        placesGrid.innerHTML = data.locais.length ? data.locais.map(placeCard).join('') : '<div class="places-empty ui-card"><i class="fa-solid fa-map-location-dot"></i><h2>Nenhum local encontrado</h2><p>Altere os filtros ou cadastre um novo espaço acessível.</p></div>';
+        const data = await api(API + '?action=list');
+        placesState.all = data.locais;
+        renderPlacesState();
+        if (placesMap) await syncMapWithState();
     } catch (error) {
-        placesGrid.innerHTML = '<div class="ui-alert ui-alert--error">' + esc(error.message) + '</div>';
+        const message = '<div class="ui-alert ui-alert--error">' + esc(error.message) + '</div>';
+        placesGrid.innerHTML = message;
+        popularGrid.innerHTML = message;
     }
+}
+
+function upsertPlace(local) {
+    const id = Number(local.id_local);
+    const index = placesState.all.findIndex(item => Number(item.id_local) === id);
+    if (index >= 0) placesState.all[index] = local;
+    else placesState.all.unshift(local);
+    renderPlacesState();
+}
+
+function removePlaceFromState(id) {
+    placesState.all = placesState.all.filter(local => Number(local.id_local) !== Number(id));
+    removePlaceMarker(id);
+    renderPlacesState();
+    fitAllPlaceMarkers();
 }
 
 async function detail(id) {
@@ -290,7 +354,7 @@ async function detail(id) {
             <div><span class="place-type">${esc(local.tipo)}</span><h2 id="detailTitle">${esc(local.nome)}</h2><p>Publicado por <a class="place-author-link" href="perfil.php?id=${Number(local.id_usuario_criador)}">${esc(local.autor)}</a> ${badge(local.is_community_user)}</p></div>
             <button class="place-modal__close" type="button" data-close aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
         </header>
-        ${canManage(local) ? managementActions(local) : ''}
+        ${canManage(local) ? managementActions(local) : `<div class="place-card__actions">${reportPlaceAction(local)}</div>`}
         <div class="place-gallery">${gallery.map((image, index) => `<button class="place-gallery__button" type="button" data-lightbox-image="${esc(image)}" data-lightbox-alt="${esc(local.nome)}, imagem ${index + 1}" aria-label="Ampliar imagem ${index + 1} de ${esc(local.nome)}"><img src="${esc(image)}" alt="${esc(local.nome)}, imagem ${index + 1}"></button>`).join('')}</div>
         <div class="place-details-grid">
             <div><h3>Sobre</h3><p>${esc(local.descricao)}</p><h3>Acessibilidade</h3><div class="accessibility-tags">${accessibility.map(item => `<span class="accessibility-tag">${esc(labels[item] || item)}</span>`).join('') || '<span>Não informado</span>'}</div></div>
@@ -440,12 +504,8 @@ async function deletePlace(id, name) {
     formData.append('id_local', id);
     try {
         const data = await api(API, {method:'POST', body:formData});
-        const wasVisible = placeMarkers.has(Number(id));
-        removePlaceMarker(id);
-        if (!wasVisible && pendingCoordinateCount > 0) pendingCoordinateCount--;
-        fitAllPlaceMarkers();
+        removePlaceFromState(id);
         document.querySelectorAll('.place-modal').forEach(modal => modal.classList.remove('is-open'));
-        await Promise.all([load(), loadPopular()]);
         showPlaceNotice(data.message, 'Local excluído');
     } catch (error) {
         showPlaceNotice(error.message, 'Não foi possível excluir');
@@ -482,10 +542,19 @@ placeLightbox.addEventListener('click', event => { if (event.target === placeLig
 document.addEventListener('keydown', event => { if (event.key === 'Escape' && !placeLightbox.hidden) closePlaceLightbox(); });
 
 if (window.openForm) openForm.addEventListener('click', openCreateForm);
-placeSearch.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(load, 350); });
-placesFilters.addEventListener('submit', event => { event.preventDefault(); load(); });
-typeFilter.addEventListener('change', load);
-accessibilityFilter.addEventListener('change', load);
+placeSearch.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(renderPlacesState, 180); });
+placesFilters.addEventListener('submit', event => { event.preventDefault(); renderPlacesState(); });
+typeFilter.addEventListener('change', renderPlacesState);
+accessibilityFilter.addEventListener('change', renderPlacesState);
+document.querySelectorAll('[data-place-scope]').forEach(tab => tab.addEventListener('click', () => {
+    placesState.scope = tab.dataset.placeScope;
+    document.querySelectorAll('[data-place-scope]').forEach(item => {
+        const active = item === tab;
+        item.classList.toggle('is-active', active);
+        item.setAttribute('aria-selected', String(active));
+    });
+    renderPlacesState();
+}));
 confirmLocation.addEventListener('click', () => {
     if (!latitude.value || !longitude.value) return;
     coordinatesConfirmed.value = '1';
@@ -571,11 +640,9 @@ placeForm.addEventListener('submit', async event => {
         formData.set('csrf', CSRF);
         formStatus.textContent = editing ? 'Salvando alterações...' : 'Publicando local...';
         const data = await api(API, {method:'POST', body:formData});
-        const wasVisible = placeMarkers.has(Number(data.local.id_local));
+        upsertPlace(data.local);
         await addPlaceMarker(data.local);
-        if (editing && !wasVisible && pendingCoordinateCount > 0) pendingCoordinateCount--;
         fitAllPlaceMarkers();
-        await Promise.all([load(), loadPopular()]);
         formModal.classList.remove('is-open');
         formStatus.textContent = '';
         showPlaceNotice(data.message, editing ? 'Alterações salvas' : 'Local publicado');
@@ -594,8 +661,8 @@ document.addEventListener('submit', async event => {
     formData.append('csrf', CSRF);
     try {
         await api(API, {method:'POST', body:formData});
-        detail(formData.get('id_local'));
-        loadPopular();
+        await detail(formData.get('id_local'));
+        await refreshPlacesState();
     } catch (error) {
         showPlaceNotice(error.message, 'Não foi possível avaliar');
     }
@@ -603,15 +670,6 @@ document.addEventListener('submit', async event => {
 
 function compactCard(local) {
     return `<article class="place-card ui-card"><img class="place-card__image" src="${esc(local.imagem_principal)}" alt="Imagem de ${esc(local.nome)}" loading="lazy"><div class="place-card__body"><div class="place-card__top"><h2>${esc(local.nome)}</h2><span class="place-type">${esc(local.tipo)}</span></div><div class="place-rating">${stars(local.nota_media)} <span>${Number(local.nota_media).toFixed(1)}</span></div><p class="place-address"><i class="fa-solid fa-location-dot"></i>${esc(local.bairro)}, ${esc(local.cidade)} - ${esc(local.uf)}</p><button class="ui-button ui-button--secondary place-card__button" type="button" data-detail="${Number(local.id_local)}">Ver detalhes</button></div></article>`;
-}
-
-async function loadPopular() {
-    try {
-        const data = await api(API + '?action=popular');
-        popularGrid.innerHTML = data.locais.length ? data.locais.map(compactCard).join('') : '<p>Ainda não há locais avaliados.</p>';
-    } catch (error) {
-        popularGrid.innerHTML = '<div class="ui-alert ui-alert--error">' + esc(error.message) + '</div>';
-    }
 }
 
 async function placeCoordinates(local) {
@@ -674,26 +732,31 @@ async function initPlacesMap() {
     if (!window.L) return;
     placesMap = L.map('placesMap', {scrollWheelZoom:false}).setView([-14.235, -51.9253], 4);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(placesMap);
-    const data = await api(API + '?action=list');
-    const bounds = [];
+    await refreshPlacesState();
+    const requestedLocal = Number(new URLSearchParams(location.search).get('local') || 0);
+    if (requestedLocal > 0) await detail(requestedLocal);
+}
+
+async function syncMapWithState() {
+    if (!placesMap) return;
+    const currentIds = new Set(placesState.all.map(local => Number(local.id_local)));
+    [...placeMarkers.keys()].forEach(id => { if (!currentIds.has(id)) removePlaceMarker(id); });
     pendingCoordinateCount = 0;
-    for (const local of data.locais) {
+    for (const local of placesState.all) {
         try {
-            const position = await addPlaceMarker(local);
-            if (position) bounds.push(position);
+            await addPlaceMarker(local);
         } catch (error) {
             pendingCoordinateCount++;
             console.warn('Local sem coordenadas:', local.id_local);
         }
     }
-    if (bounds.length) fitAllPlaceMarkers();
-    if (!bounds.length) fitAllPlaceMarkers();
+    fitAllPlaceMarkers();
 }
 
-load();
-loadPopular();
 initPlacesMap();
 </script>
-<script src="../static/js/acessibility.js" defer></script>
+<script src="../static/js/report-modal.js?v=70"></script>
+<script>window.LibrasHubReports.init({api:'ajax/social_api.php',csrf:REPORT_CSRF});</script>
+<script src="../static/js/acessibility.js?v=67" defer></script>
 </body>
 </html>

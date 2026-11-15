@@ -13,7 +13,7 @@
 
   /* ---- tokens semânticos (o que muda com tema/contraste) ---- */
   --bg:var(--color-light-yellow);            /* 60% - fundo dominante */
-  --surface:var(--color-light-yellow);       /* cards/painéis: mesmo tom do fundo, diferenciados pela borda */
+  --surface:var(--color-white);              /* cards e painéis brancos sobre o fundo amarelo */
   --border:var(--color-black);         /* 30% - estrutura */
   --text:var(--color-black);           /* 30% - estrutura/texto */
   --text-muted:#4a4020;                /* variação escura da paleta, contraste 8.6:1 sobre o fundo amarelo */
@@ -41,16 +41,16 @@
 
 /* TEMA ESCURO */
 html[data-theme="dark"]{
-  --bg:var(--color-black);
-  --surface:var(--color-black);
-  --border:color-mix(in srgb, var(--color-blue) 35%, black);
-  --text:var(--color-white);
-  --text-muted:#b9ad72;
+  --bg:#0c1320;
+  --surface:#131d2c;
+  --border:#34445a;
+  --text:#f4f7fb;
+  --text-muted:#bdc9d8;
   --primary-link:var(--color-blue-light); /* o azul puro não passa no contraste sobre fundo preto */
-  --sidebar-bg:var(--color-light-black);
-  --sidebar-text:var(--color-light-yellow);
-  --input-bg:#1a1a1a;
-  --input-text:var(--color-yellow);
+  --sidebar-bg:#131d2c;
+  --sidebar-text:#f4f7fb;
+  --input-bg:#0f1928;
+  --input-text:#f4f7fb;
 }
 
 /* ALTO CONTRASTE */
@@ -174,10 +174,20 @@ button,a,input,select,textarea{transition:border-color .18s,background-color .18
 
 /* CONTENT */
 .content{
+  /* Corrige altura e elimina sobra no final da tela */
   flex:1;
-  height:100vh;
-  overflow-y:auto;
+  min-height:100vh;
+  min-height:100dvh;
+  height:auto;
+  overflow-y:visible;
   padding:32px 40px;}
+@media (max-width:900px){
+  .content{
+    min-height:100dvh;
+    padding-bottom:24px;
+  }
+}
+
 .page-title{
   font-size:1.375rem;
   font-weight:700;

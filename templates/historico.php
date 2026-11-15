@@ -15,6 +15,30 @@ if (empty($_SESSION["usuario_id"])) {
 $idUsuarioAtual =
     (int) $_SESSION["usuario_id"];
 
+if (empty($_SESSION["historico_csrf"])) {
+    $_SESSION["historico_csrf"] = bin2hex(random_bytes(24));
+}
+
+try {
+    $colunaSalvo = $pdo->query("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='historico' AND column_name='salvo'");
+    if (!(bool) $colunaSalvo->fetchColumn()) {
+        $pdo->exec("ALTER TABLE historico ADD COLUMN salvo TINYINT(1) NOT NULL DEFAULT 0 AFTER texto_resultado");
+    }
+    $indiceSalvo = $pdo->query("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='historico' AND index_name='idx_historico_usuario_salvo_data'");
+    if (!(bool) $indiceSalvo->fetchColumn()) $pdo->exec("ALTER TABLE historico ADD INDEX idx_historico_usuario_salvo_data(id_usuario,salvo,criado_em)");
+} catch (PDOException $e) {
+    error_log("Falha ao preparar favoritos do histórico: " . $e->getMessage());
+}
+
+function excluirArquivoHistorico(?string $urlArquivo): void
+{
+    $url = trim((string) $urlArquivo);
+    if ($url === "" || !str_starts_with($url, "uploads_historico/")) return;
+    $base = realpath(__DIR__ . DIRECTORY_SEPARATOR . "uploads_historico");
+    $arquivo = realpath(__DIR__ . DIRECTORY_SEPARATOR . str_replace("/", DIRECTORY_SEPARATOR, $url));
+    if ($base && $arquivo && str_starts_with($arquivo, $base . DIRECTORY_SEPARATOR) && is_file($arquivo)) @unlink($arquivo);
+}
+
 
 $stmt = $pdo->prepare("
     SELECT
@@ -66,12 +90,27 @@ $ehAdmin =
 
 $erro = "";
 $sucesso = "";
+$solicitacaoAjax = strtolower((string) ($_SERVER["HTTP_X_REQUESTED_WITH"] ?? "")) === "xmlhttprequest";
+
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $csrfRecebido = (string) ($_POST["csrf"] ?? "");
+    if (!hash_equals((string) $_SESSION["historico_csrf"], $csrfRecebido)) {
+        if ($solicitacaoAjax && ($_POST["acao"] ?? "") === "alternar_salvo") {
+            http_response_code(403);
+            header("Content-Type: application/json; charset=utf-8");
+            echo json_encode(["ok" => false, "message" => "A sessão de segurança expirou. Atualize a página."], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+        $erro = "A sessão de segurança expirou. Atualize a página e tente novamente.";
+    }
+}
 
 
 if (
     $_SERVER["REQUEST_METHOD"] === "POST"
     &&
     ($_POST["acao"] ?? "") === "excluir_historico"
+    && $erro === ""
 ) {
 
     $idHistorico =
@@ -139,50 +178,7 @@ if (
                     $stmt->rowCount() > 0
                 ) {
 
-                    $urlArquivoExcluir =
-                        trim(
-                            (string) (
-                                $registroExcluir[
-                                    "url_arquivo"
-                                ]
-                                ??
-                                ""
-                            )
-                        );
-
-
-                    if (
-                        $urlArquivoExcluir !== ""
-                        &&
-                        str_starts_with(
-                            $urlArquivoExcluir,
-                            "uploads_historico/"
-                        )
-                    ) {
-
-                        $caminhoArquivoExcluir =
-                            __DIR__
-                            .
-                            DIRECTORY_SEPARATOR
-                            .
-                            str_replace(
-                                "/",
-                                DIRECTORY_SEPARATOR,
-                                $urlArquivoExcluir
-                            );
-
-
-                        if (
-                            is_file(
-                                $caminhoArquivoExcluir
-                            )
-                        ) {
-
-                            @unlink(
-                                $caminhoArquivoExcluir
-                            );
-                        }
-                    }
+                    excluirArquivoHistorico($registroExcluir["url_arquivo"] ?? null);
 
 
                     $sucesso =
@@ -204,6 +200,67 @@ if (
     }
 }
 
+if ($_SERVER["REQUEST_METHOD"] === "POST" && ($_POST["acao"] ?? "") === "alternar_salvo" && $erro === "") {
+    $idHistorico = (int) ($_POST["id_historico"] ?? 0);
+    if ($idHistorico < 1) {
+        if ($solicitacaoAjax) {
+            http_response_code(422);
+            header("Content-Type: application/json; charset=utf-8");
+            echo json_encode(["ok" => false, "message" => "Registro de histórico inválido."], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+        $erro = "Registro de histórico inválido.";
+    } else {
+        try {
+            $stmt = $pdo->prepare("UPDATE historico SET salvo=IF(salvo=1,0,1) WHERE id_historico=? AND id_usuario=?");
+            $stmt->execute([$idHistorico, $idUsuarioAtual]);
+            if (!$stmt->rowCount()) {
+                if ($solicitacaoAjax) {
+                    http_response_code(404);
+                    header("Content-Type: application/json; charset=utf-8");
+                    echo json_encode(["ok" => false, "message" => "Registro não encontrado."], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
+                $erro = "Registro não encontrado.";
+            } else {
+                $estado = $pdo->prepare("SELECT salvo FROM historico WHERE id_historico=? AND id_usuario=?");
+                $estado->execute([$idHistorico, $idUsuarioAtual]);
+                $salvo = (bool) $estado->fetchColumn();
+                if ($solicitacaoAjax) {
+                    $contador = $pdo->prepare("SELECT COUNT(*) FROM historico WHERE id_usuario=? AND salvo=1");
+                    $contador->execute([$idUsuarioAtual]);
+                    header("Content-Type: application/json; charset=utf-8");
+                    echo json_encode(["ok" => true, "salvo" => $salvo, "total_salvos" => (int) $contador->fetchColumn(), "message" => $salvo ? "Tradução salva." : "Tradução retirada dos salvos."], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
+                $sucesso = $salvo ? "Tradução salva." : "Tradução retirada dos salvos.";
+            }
+        } catch (PDOException $e) {
+            if ($solicitacaoAjax) {
+                http_response_code(500);
+                header("Content-Type: application/json; charset=utf-8");
+                echo json_encode(["ok" => false, "message" => "Não foi possível atualizar a tradução salva."], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            $erro = "Não foi possível atualizar a tradução salva.";
+        }
+    }
+}
+
+if ($_SERVER["REQUEST_METHOD"] === "POST" && ($_POST["acao"] ?? "") === "limpar_historico" && $erro === "") {
+    try {
+        $stmt = $pdo->prepare("SELECT url_arquivo FROM historico WHERE id_usuario=? AND salvo=0");
+        $stmt->execute([$idUsuarioAtual]);
+        $arquivosLimpeza = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $stmt = $pdo->prepare("DELETE FROM historico WHERE id_usuario=? AND salvo=0");
+        $stmt->execute([$idUsuarioAtual]);
+        foreach ($arquivosLimpeza as $arquivoLimpeza) excluirArquivoHistorico((string) $arquivoLimpeza);
+        $sucesso = $stmt->rowCount() > 0 ? "Histórico limpo. As traduções salvas foram preservadas." : "Não havia traduções não salvas para remover.";
+    } catch (PDOException $e) {
+        $erro = "Não foi possível limpar o histórico.";
+    }
+}
+
 
 try {
 
@@ -215,6 +272,7 @@ try {
             h.url_arquivo,
             h.origem,
             h.texto_resultado,
+            h.salvo,
             h.criado_em,
             g.nm_gesto
 
@@ -242,10 +300,13 @@ try {
             PDO::FETCH_ASSOC
         );
 
+    $totalSalvos = count(array_filter($historicos, static fn(array $item): bool => (int) ($item["salvo"] ?? 0) === 1));
+
 
 } catch (PDOException $e) {
 
     $historicos = [];
+    $totalSalvos = 0;
 
     $erro =
         "Não foi possível carregar o histórico.";
@@ -555,6 +616,8 @@ try {
     font-size:0.75rem;
     color:var(--text-muted);
 }
+
+.history-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}.history-header-actions form,.hist-save-form{margin:0}.history-clear-button{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font:700 .75rem/1 inherit;cursor:pointer}.history-clear-button:hover{border-color:var(--danger);color:var(--danger);background:color-mix(in srgb,var(--danger) 6%,var(--surface))}.history-save-status{width:100%;min-height:1.1rem;color:var(--text-muted);font-size:.74rem;text-align:right}.history-save-status.is-error{color:var(--danger)}.hist-item.is-saved{border-color:color-mix(in srgb,var(--primary) 48%,var(--border));box-shadow:inset 3px 0 0 var(--primary)}.hist-save.is-active{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,var(--surface));color:var(--primary)}.hist-save:hover{border-color:var(--primary);color:var(--primary)}.hist-save:disabled{opacity:.6;cursor:wait}
 
 .history-list{
     display:flex;
@@ -890,6 +953,8 @@ body{
         flex-direction:column;
     }
 
+    .history-header-actions{width:100%;align-items:flex-start;justify-content:space-between}.history-header-actions form{width:100%}.history-clear-button{width:100%;justify-content:center}
+
     .hist-item{
         align-items:flex-start;
         gap:12px;
@@ -1053,14 +1118,16 @@ body{
                         Suas traduções
                     </div>
 
-                    <div class="history-count">
-
-                        <?= count(
-                            $historicos
-                        ) ?>
-
-                        registro(s)
-
+                    <div class="history-header-actions">
+                        <div class="history-count"><span id="historyTotalCount"><?= count($historicos) ?></span> registro(s) · <span id="historySavedCount"><?= $totalSalvos ?></span> salvo(s)</div>
+                        <?php if (!empty($historicos)): ?>
+                        <form method="POST" action="historico.php" onsubmit="return confirm('Limpar todas as traduções não salvas? As traduções salvas serão preservadas.');">
+                            <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['historico_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="acao" value="limpar_historico">
+                            <button type="submit" class="history-clear-button"><i class="fa-solid fa-broom"></i>Limpar histórico</button>
+                        </form>
+                        <?php endif; ?>
+                        <div class="history-save-status" id="historySaveStatus" role="status" aria-live="polite"></div>
                     </div>
 
                 </div>
@@ -1198,7 +1265,7 @@ body{
 
 
                             <div
-                                class="hist-item"
+                                class="hist-item <?= !empty($historico['salvo']) ? 'is-saved' : '' ?>"
                                 tabindex="0"
                                 data-texto="<?= htmlspecialchars(
                                     $textoResultado,
@@ -1287,6 +1354,15 @@ body{
 
                                 <div class="hist-actions">
 
+                                    <form method="POST" action="historico.php" class="hist-save-form" onclick="event.stopPropagation();">
+                                        <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['historico_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+                                        <input type="hidden" name="acao" value="alternar_salvo">
+                                        <input type="hidden" name="id_historico" value="<?= (int) $historico['id_historico'] ?>">
+                                        <button type="submit" class="hist-action hist-save <?= !empty($historico['salvo']) ? 'is-active' : '' ?>" title="<?= !empty($historico['salvo']) ? 'Retirar das traduções salvas' : 'Salvar tradução' ?>" aria-label="<?= !empty($historico['salvo']) ? 'Retirar das traduções salvas' : 'Salvar tradução' ?>" aria-pressed="<?= !empty($historico['salvo']) ? 'true' : 'false' ?>">
+                                            <i class="fa-<?= !empty($historico['salvo']) ? 'solid' : 'regular' ?> fa-bookmark"></i>
+                                        </button>
+                                    </form>
+
 
                                     <button
                                         type="button"
@@ -1329,6 +1405,8 @@ body{
                                             name="acao"
                                             value="excluir_historico"
                                         >
+
+                                        <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['historico_csrf'], ENT_QUOTES, 'UTF-8') ?>">
 
 
                                         <input
@@ -1406,6 +1484,57 @@ body{
 
 
 <script>
+
+document.querySelectorAll(".hist-save-form").forEach(function(formulario){
+    formulario.addEventListener("submit", async function(event){
+        event.preventDefault();
+        event.stopPropagation();
+
+        const botao = formulario.querySelector(".hist-save");
+        const item = formulario.closest(".hist-item");
+        const icone = botao.querySelector("i");
+        const status = document.getElementById("historySaveStatus");
+
+        botao.disabled = true;
+        status.classList.remove("is-error");
+        status.textContent = "Atualizando...";
+
+        try {
+            const resposta = await fetch(formulario.action, {
+                method: "POST",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Accept": "application/json"
+                },
+                body: new FormData(formulario),
+                credentials: "same-origin"
+            });
+
+            const resultado = await resposta.json().catch(function(){
+                return {ok:false,message:"Resposta inválida do servidor."};
+            });
+
+            if (!resposta.ok || !resultado.ok) {
+                throw new Error(resultado.message || "Não foi possível atualizar a tradução.");
+            }
+
+            const salvo = Boolean(resultado.salvo);
+            item.classList.toggle("is-saved", salvo);
+            botao.classList.toggle("is-active", salvo);
+            botao.setAttribute("aria-pressed", String(salvo));
+            botao.title = salvo ? "Retirar das traduções salvas" : "Salvar tradução";
+            botao.setAttribute("aria-label", botao.title);
+            icone.className = "fa-" + (salvo ? "solid" : "regular") + " fa-bookmark";
+            document.getElementById("historySavedCount").textContent = String(resultado.total_salvos);
+            status.textContent = resultado.message;
+        } catch (erro) {
+            status.classList.add("is-error");
+            status.textContent = erro.message || "Não foi possível atualizar a tradução.";
+        } finally {
+            botao.disabled = false;
+        }
+    });
+});
 
 function selecionarHistorico(
     elemento
@@ -1937,7 +2066,7 @@ function lerHist(
 </script>
 
 
-<script src="../static/js/acessibility.js" defer></script>
+<script src="../static/js/acessibility.js?v=67" defer></script>
 </body>
 
 </html>

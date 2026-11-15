@@ -5,6 +5,79 @@ declare(strict_types=1);
 const AUTH_COOKIE_NAME = 'librashub_remember';
 const AUTH_TOKEN_DAYS = 30;
 
+function authNormalizeEmail(string $email): string
+{
+    $email = trim($email);
+    if (function_exists('mb_strtolower')) {
+        return mb_strtolower($email, 'UTF-8');
+    }
+    return strtolower($email);
+}
+
+/**
+ * Valida senhas atuais (password_hash) e migra automaticamente formatos
+ * legados encontrados em bases antigas do LibrasHub.
+ */
+function authVerifyUserPassword(PDO $pdo, array $user, string $plainPassword): bool
+{
+    $userId = (int) ($user['id_usuario'] ?? 0);
+    $stored = trim((string) ($user['senha_usuario'] ?? ''));
+
+    if ($userId < 1 || $stored === '' || $plainPassword === '') {
+        return false;
+    }
+
+    $verified = false;
+    $legacy = false;
+
+    // Formato atual: bcrypt/Argon gerado por password_hash().
+    $info = password_get_info($stored);
+    if (($info['algo'] ?? null) !== null) {
+        $verified = password_verify($plainPassword, $stored);
+    } else {
+        // Compatibilidade somente para contas antigas. Após um login válido,
+        // o valor é imediatamente convertido para PASSWORD_DEFAULT.
+        if (preg_match('/^[a-f0-9]{32}$/i', $stored)) {
+            $verified = hash_equals(strtolower($stored), md5($plainPassword));
+            $legacy = $verified;
+        } elseif (preg_match('/^[a-f0-9]{40}$/i', $stored)) {
+            $verified = hash_equals(strtolower($stored), sha1($plainPassword));
+            $legacy = $verified;
+        } elseif (preg_match('/^[a-f0-9]{64}$/i', $stored)) {
+            $verified = hash_equals(strtolower($stored), hash('sha256', $plainPassword));
+            $legacy = $verified;
+        } elseif (!str_starts_with($stored, '$')) {
+            // Bancos muito antigos podem ter armazenado a senha sem hash.
+            $verified = hash_equals($stored, $plainPassword);
+            $legacy = $verified;
+        }
+    }
+
+    if (!$verified) {
+        return false;
+    }
+
+    $mustRehash = $legacy;
+    if (!$legacy && ($info['algo'] ?? null) !== null) {
+        $mustRehash = password_needs_rehash($stored, PASSWORD_DEFAULT);
+    }
+
+    if ($mustRehash) {
+        $newHash = password_hash($plainPassword, PASSWORD_DEFAULT);
+        if ($newHash !== false) {
+            try {
+                $statement = $pdo->prepare('UPDATE usuario SET senha_usuario = ? WHERE id_usuario = ?');
+                $statement->execute([$newHash, $userId]);
+            } catch (Throwable $error) {
+                // O login continua válido; a migração será tentada novamente depois.
+                error_log('Não foi possível atualizar o hash da senha do usuário ' . $userId . ': ' . $error->getMessage());
+            }
+        }
+    }
+
+    return true;
+}
+
 function authStartSession(): void
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {

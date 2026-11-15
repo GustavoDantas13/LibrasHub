@@ -1743,7 +1743,7 @@ window.addEventListener(
 </script>
 
 
-<script src="../static/js/acessibility.js" defer></script>
+<script src="../static/js/acessibility.js?v=67" defer></script>
 </body>
 
 </html>

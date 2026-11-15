@@ -22,4 +22,8 @@
 .profile-settings-back{width:max-content;max-width:100%;display:inline-flex;align-items:center;gap:.5rem;margin:0 0 1rem;padding:.65rem .85rem;border:1px solid var(--ui-border);border-radius:10px;background:var(--ui-surface);color:var(--ui-text);font-weight:700;text-decoration:none}.profile-settings-back:hover{border-color:var(--ui-brand);color:var(--ui-brand)}
 html[data-theme="dark"] .profile-settings-page .panel,html[data-theme="dark"] .profile-settings-page .modal,html[data-theme="dark"] .profile-settings-page .content{background-color:var(--ui-bg)}
 html[data-theme="dark"] .profile-settings-page .panel,html[data-theme="dark"] .profile-settings-page .modal{background:var(--ui-surface)}
+html[data-theme="dark"] body.profile-settings-page{background:var(--ui-bg);color:var(--ui-text)}
+html[data-theme="dark"] .profile-settings-page .info-field,html[data-theme="dark"] .profile-settings-page .profile-photo-field,html[data-theme="dark"] .profile-settings-page .profile-banner-field,html[data-theme="dark"] .profile-settings-page .danger-box{border-color:var(--ui-border);background:var(--ui-surface-soft);color:var(--ui-text)}
+html[data-theme="dark"] .profile-settings-page .user-name,html[data-theme="dark"] .profile-settings-page .info-title,html[data-theme="dark"] .profile-settings-page .info-value,html[data-theme="dark"] .profile-settings-page .modal-title{color:var(--ui-text)}
 @media(max-width:600px){.profile-settings-page .profile-photo-field{grid-template-columns:1fr;text-align:center}.profile-photo-preview{margin-inline:auto}.profile-settings-page .profile-photo-field .field{text-align:left}}
+.profile-settings-page .logout-btn,.profile-settings-page .danger-box{display:none!important}

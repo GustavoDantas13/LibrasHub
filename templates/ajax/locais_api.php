@@ -17,6 +17,8 @@ if (empty($_SESSION['usuario_id'])) {
 }
 
 require_once __DIR__ . '/../configs/config.php';
+require_once __DIR__ . '/../configs/social_schema.php';
+ensureSocialSchema($pdo);
 
 $uid = (int) $_SESSION['usuario_id'];
 if (empty($_SESSION['locais_csrf'])) {
@@ -109,6 +111,9 @@ function isAdmin(): bool
 
 function canPublishPlace(PDO $pdo, int $uid): bool
 {
+    $punishment = $pdo->prepare("SELECT 1 FROM usuario_punicoes WHERE id_usuario=? AND tipo='cadastrar_locais' AND revogada_em IS NULL AND expira_em>NOW() LIMIT 1");
+    $punishment->execute([$uid]);
+    if ($punishment->fetchColumn()) return false;
     if (isAdmin()) {
         return true;
     }
@@ -392,7 +397,7 @@ try {
             FROM locais l JOIN usuario u ON u.id_usuario=l.id_usuario_criador
             LEFT JOIN avaliacoes a ON a.id_local=l.id_local
             WHERE " . implode(' AND ', $where) . '
-            GROUP BY l.id_local ORDER BY l.criado_em DESC LIMIT 100';
+            GROUP BY l.id_local ORDER BY l.criado_em DESC LIMIT 1000';
         $statement = $pdo->prepare($sql);
         $statement->execute($parameters);
         out(true, ['locais' => $statement->fetchAll()]);

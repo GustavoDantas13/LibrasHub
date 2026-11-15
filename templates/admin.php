@@ -4,10 +4,11 @@
 session_start();
 
 require_once "configs/config.php";
+require_once "configs/social_schema.php";
 
 
 if (empty($_SESSION["usuario_id"])) {
-    header("Location: login.php");
+    header("Location: Login.php");
     exit;
 }
 
@@ -42,7 +43,7 @@ if (!$usuario) {
 
     session_destroy();
 
-    header("Location: login.php");
+    header("Location: Login.php");
 
     exit;
 }
@@ -59,6 +60,13 @@ $TIPOS_VALIDOS = [
     "Usuário Comunitário",
     "Administrador"
 ];
+
+if ($ehAdmin) {
+    ensureSocialSchema($pdo);
+    if (empty($_SESSION["social_csrf"])) {
+        $_SESSION["social_csrf"] = bin2hex(random_bytes(24));
+    }
+}
 
 
 
@@ -1853,7 +1861,7 @@ if ($ehAdmin) {
         (int) $pdo
             ->query("
                 SELECT COUNT(*)
-                FROM comunidade
+                FROM social_comunidades
             ")
             ->fetchColumn();
 
@@ -1863,10 +1871,10 @@ if ($ehAdmin) {
             ->query("
                 SELECT
                     c.id_comunidade,
-                    c.id_usuario,
-                    c.nm_comunidade,
-                    c.ds_comunidade,
-                    c.dt_criacao,
+                    c.id_criador AS id_usuario,
+                    c.nome AS nm_comunidade,
+                    c.descricao AS ds_comunidade,
+                    c.criado_em AS dt_criacao,
 
                     u.nm_usuario
                         AS criador,
@@ -1874,23 +1882,24 @@ if ($ehAdmin) {
                     (
                         SELECT COUNT(*)
 
-                        FROM usuario_comunidade uc
+                        FROM social_comunidade_membros uc
 
                         WHERE
                             uc.id_comunidade =
                             c.id_comunidade
+                            AND uc.status = 'ativo'
                     )
                         AS total_membros
 
-                FROM comunidade c
+                FROM social_comunidades c
 
                 INNER JOIN usuario u
                     ON
                     u.id_usuario =
-                    c.id_usuario
+                    c.id_criador
 
                 ORDER BY
-                    c.dt_criacao DESC
+                    c.criado_em DESC
             ")
             ->fetchAll(
                 PDO::FETCH_ASSOC
@@ -1992,6 +2001,7 @@ $inicial =
 
 
     <link rel="stylesheet" href="../static/css/style.css">
+    <link rel="stylesheet" href="../static/css/moderation.css?v=69">
 
 
     <script>
@@ -2118,6 +2128,21 @@ $inicial =
 
 
     <style>
+        /* Superfície da moderação alinhada às demais abas administrativas. */
+        .admin-moderation {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: var(--surface);
+            box-shadow: var(--shadow-sm);
+        }
+        .admin-moderation .moderation-card,
+        .admin-moderation .moderation-empty {
+            background: var(--surface);
+        }
+        .admin-moderation .moderation-form select,
+        .admin-moderation .moderation-form textarea {
+            background: var(--input-bg);
+        }
         /* =========================================================
            RESPONSIVIDADE LOCAL - ADMIN LIBRASHUB
            Mantém o layout desktop e transforma a sidebar em menu
@@ -2764,6 +2789,10 @@ $inicial =
 
                 <button type="button" class="admin-tab-btn" data-tab="comunidade">
                     Comunidade
+                </button>
+
+                <button type="button" class="admin-tab-btn" data-tab="denuncias">
+                    Denúncias
                 </button>
 
             </div>
@@ -4608,6 +4637,29 @@ $inicial =
             </section>
 
 
+            <section class="admin-tab" id="tab-denuncias">
+                <div class="moderation-shell admin-moderation" data-admin-reports data-api="ajax/social_api.php" data-csrf="<?= htmlspecialchars((string) $_SESSION['social_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+                    <header class="moderation-header">
+                        <div>
+                            <span class="ui-eyebrow"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Moderação</span>
+                            <h2>Denúncias recebidas</h2>
+                            <p>Analise denúncias de usuários, comunidades, publicações e comentários.</p>
+                        </div>
+                        <button class="btn-secondary" type="button" data-report-refresh><i class="fa-solid fa-rotate" aria-hidden="true"></i> Atualizar</button>
+                    </header>
+                    <nav class="moderation-filters" aria-label="Filtrar denúncias">
+                        <button type="button" class="moderation-filter is-active" data-report-status="pendente">Pendentes <span data-report-count="pendente">0</span></button>
+                        <button type="button" class="moderation-filter" data-report-status="analise">Em análise <span data-report-count="analise">0</span></button>
+                        <button type="button" class="moderation-filter" data-report-status="resolvida">Resolvidas <span data-report-count="resolvida">0</span></button>
+                        <button type="button" class="moderation-filter" data-report-status="arquivada">Arquivadas <span data-report-count="arquivada">0</span></button>
+                        <button type="button" class="moderation-filter" data-report-status="todas">Todas</button>
+                    </nav>
+                    <p class="moderation-status" data-report-status-text role="status" aria-live="polite"></p>
+                    <div class="moderation-list" data-report-list><div class="moderation-empty">Abra esta aba para carregar as denúncias.</div></div>
+                </div>
+            </section>
+
+
         <?php endif; ?>
 
 
@@ -4616,6 +4668,8 @@ $inicial =
 
 
     <?php if ($ehAdmin): ?>
+
+        <script src="../static/js/admin-reports.js?v=2" defer></script>
 
         <script>
 
@@ -8458,7 +8512,7 @@ $inicial =
     </script>
 
 
-<script src="../static/js/acessibility.js" defer></script>
+<script src="../static/js/acessibility.js?v=69" defer></script>
 </body>
 
 </html>
