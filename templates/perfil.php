@@ -66,7 +66,39 @@ $stmt = $pdo->prepare(
 );
 $stmt->execute([$viewerId, $profileId]);
 $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-foreach($posts as &$item){$a=$pdo->prepare('SELECT ds_caminho AS caminho,nm_arquivo AS nome_arquivo,cd_tipo_mime AS mime_type FROM social_post_anexos WHERE id_post=? ORDER BY nr_ordem');$a->execute([(int)$item['id_post']]);$item['anexos']=$a->fetchAll(PDO::FETCH_ASSOC);}unset($item);
+// Compatibilidade com as duas versões do esquema de anexos (campos antigos e mnemônicos).
+// SHOW COLUMNS é usado em vez de information_schema, que pode estar restrito no XAMPP.
+$attachmentColumns = $pdo->query('SHOW COLUMNS FROM `social_post_anexos`')->fetchAll(PDO::FETCH_COLUMN);
+$attachmentColumn = static function (array $options) use ($attachmentColumns): ?string {
+    foreach ($options as $option) {
+        if (in_array($option, $attachmentColumns, true)) return $option;
+    }
+    return null;
+};
+$pathColumn = $attachmentColumn(['ds_caminho', 'caminho']);
+$nameColumn = $attachmentColumn(['nm_arquivo', 'nome_arquivo']);
+$mimeColumn = $attachmentColumn(['cd_tipo_mime', 'mime_type', 'tipo_mime']);
+$orderColumn = $attachmentColumn(['nr_ordem', 'ordem', 'id_anexo', 'id']);
+if ($pathColumn === null) {
+    error_log('[LibrasHub Perfil] social_post_anexos sem coluna de caminho reconhecida.');
+    foreach ($posts as &$item) $item['anexos'] = [];
+    unset($item);
+} else {
+    // Os identificadores vêm exclusivamente de uma lista fixa de nomes permitidos.
+    $pathField = '`' . $pathColumn . '`';
+    $nameField = $nameColumn ? '`' . $nameColumn . '`' : "''";
+    $mimeField = $mimeColumn ? '`' . $mimeColumn . '`' : "''";
+    $orderSql = $orderColumn ? ' ORDER BY `' . $orderColumn . '`' : '';
+    $attachmentsStmt = $pdo->prepare(
+        "SELECT {$pathField} AS caminho, {$nameField} AS nome_arquivo, {$mimeField} AS mime_type " .
+        "FROM `social_post_anexos` WHERE `id_post` = ?{$orderSql}"
+    );
+    foreach ($posts as &$item) {
+        $attachmentsStmt->execute([(int)$item['id_post']]);
+        $item['anexos'] = $attachmentsStmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    unset($item);
+}
 $followStatement = $pdo->prepare('SELECT (SELECT COUNT(*) FROM social_seguidores WHERE id_seguido=?) seguidores,(SELECT COUNT(*) FROM social_seguidores WHERE id_seguidor=?) seguindo,EXISTS(SELECT 1 FROM social_seguidores WHERE id_seguidor=? AND id_seguido=?) seguindo_usuario');
 $followStatement->execute([$profileId, $profileId, $viewerId, $profileId]);
 $followState = $followStatement->fetch(PDO::FETCH_ASSOC) ?: ['seguidores'=>0,'seguindo'=>0,'seguindo_usuario'=>0];
